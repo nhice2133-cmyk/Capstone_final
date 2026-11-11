@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSUCC Athenaeum — SMART ENTRY (Entry Kiosk)</title>
+  <meta name="description" content="SMART ENTRY Face Recognition Kiosk — Caraga State University Cabadbaran Campus Athenaeum" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/csu_seal.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk.css') }}" />
+</head>
+<body class="kiosk-body">
+
+  <!-- Background layers with Athenaeum institutional branding -->
+  <div class="kiosk-bg-art">
+    <div class="bg-banner-overlay"></div>
+    <div class="bg-seal-watermark"></div>
+  </div>
+
+  <!-- Animated atmospheric light orbs -->
+  <div class="bg-particles">
+    <div class="particle particle-green"></div>
+    <div class="particle particle-gold"></div>
+    <div class="particle particle-emerald"></div>
+    <div class="particle particle-amber"></div>
+  </div>
+
+  <!-- CSUCC Athenaeum Header Bar -->
+  <header class="kiosk-header">
+    <div class="header-left">
+      <div class="csucc-logo-wrap">
+        <img src="{{ url_for('static', filename='images/csu_seal.png') }}" alt="CSU Seal" class="csu-seal-img" />
+      </div>
+      <div class="header-brand">
+        <div class="brand-eyebrow">CARAGA STATE UNIVERSITY • CABADBARAN CAMPUS</div>
+        <div class="brand-title">CSUCC ATHENAEUM</div>
+      </div>
+    </div>
+    
+    <div class="header-center">
+      <div class="system-pill">SMART ENTRY SYSTEM</div>
+    </div>
+
+    <div class="header-right">
+      <div class="clock-wrap">
+        <span class="clock-label">SYSTEM TIME</span>
+        <div class="clock" id="kioskClock">--:--:--</div>
+      </div>
+      <div class="mode-badge entry">
+        🏛️ ATHENAEUM ENTRY KIOSK
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Kiosk Layout -->
+  <main class="kiosk-main">
+    <!-- Camera Viewport with Security HUD -->
+    <div class="camera-panel" id="cameraPanel">
+      <div class="hud-top-bar">
+        <div class="hud-live-tag">
+          <span class="hud-pulse-dot"></span>
+          <span>LIVE RECOGNITION FEED</span>
+        </div>
+        <div class="hud-facility-tag">ATHENAEUM ENTRANCE</div>
+      </div>
+
+      <video id="webcamVideo" autoplay playsinline muted></video>
+      <canvas id="webcamCanvas" style="display:none;"></canvas>
+      <canvas id="faceBoxCanvas"></canvas>
+
+      <!-- Corner HUD accents -->
+      <div class="hud-bracket top-left"></div>
+      <div class="hud-bracket top-right"></div>
+      <div class="hud-bracket bottom-left"></div>
+      <div class="hud-bracket bottom-right"></div>
+
+      <div class="hud-bottom-bar">
+        <span class="hud-metric">SECURITY LEVEL: ACTIVE</span>
+        <span class="hud-metric">CSUCC BIOMETRIC MATRIX</span>
+      </div>
+    </div>
+
+    <!-- Interactive Information Panel -->
+    <div class="info-panel" id="infoPanel">
+      <!-- Default state -->
+      <div class="info-state" id="stateDefault">
+        <!-- Visual feature card showing real Athenaeum entrance -->
+        <div class="athenaeum-showcase-card">
+          <img id="kioskShowcaseImg" src="{{ url_for('static', filename='images/Athenaeum.png') }}" alt="CSUCC Campus Facility" class="athenaeum-hero-img" style="transition: opacity 0.6s ease-in-out;" />
+          <div id="kioskShowcaseLabel" class="showcase-badge">CSUCC ATHENAEUM LEARNING COMMONS</div>
+        </div>
+
+        <div class="welcome-header">
+          <h2 class="info-heading">Welcome to the Athenaeum</h2>
+          <p class="info-subheading">Caraga State University • Cabadbaran Campus</p>
+        </div>
+
+        <p class="info-body">
+          Please face the camera to verify your identity.<br/>
+          Fast automated recognition takes approximately <strong>2 seconds</strong>.
+        </p>
+
+        <div class="status-dot" id="statusDot">
+          <span class="dot-pulse"></span>
+          <span>Scanning face biometric data…</span>
+        </div>
+      </div>
+
+      <!-- Identification Success state -->
+      <div class="info-state hidden" id="stateIdentifySuccess">
+        <div class="state-icon-badge success-halo">✅</div>
+        <h2 class="info-heading">Identity Confirmed!</h2>
+        <p class="info-subheading">CSUCC Athenaeum Student Pass</p>
+
+        <div class="student-card">
+          <div class="card-institution-strip">CARAGA STATE UNIVERSITY • CABADBARAN CAMPUS</div>
+          <div class="student-card-inner">
+            <div class="student-avatar" id="studentAvatar">👤</div>
+            <div class="student-info">
+              <div class="student-name" id="studentName">—</div>
+              <div class="student-id" id="studentIdDisplay">—</div>
+              <div class="student-prog" id="studentProg">—</div>
+            </div>
+          </div>
+        </div>
+        <p class="info-body">Loading purpose selection...</p>
+      </div>
+
+      <!-- Purpose Selection state -->
+      <div class="info-state hidden" id="statePurpose">
+        <div class="student-card compact">
+          <div class="student-info">
+            <div class="student-name" id="purposeStudentName">—</div>
+            <div class="student-prog" id="purposeStudentProg">—</div>
+          </div>
+        </div>
+        
+        <div class="purpose-selection-box">
+          <div class="purpose-label">Select Your Visit Purpose</div>
+          <div class="purpose-grid" id="purposeGrid">
+            <button class="purpose-btn" id="btnReturn" data-purpose="Return Book">
+              <span class="purpose-icon">📚</span>
+              <span class="purpose-text">Return Book</span>
+            </button>
+            <button class="purpose-btn" id="btnBorrow" data-purpose="Borrow Book">
+              <span class="purpose-icon">📖</span>
+              <span class="purpose-text">Borrow Book</span>
+            </button>
+            <button class="purpose-btn" id="btnStudy" data-purpose="Study Room">
+              <span class="purpose-icon">🧑‍💻</span>
+              <span class="purpose-text">Study Commons</span>
+            </button>
+            <button class="purpose-btn" id="btnGeneral" data-purpose="General Space">
+              <span class="purpose-icon">🏢</span>
+              <span class="purpose-text">General Space</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirmed state -->
+      <div class="info-state hidden" id="stateConfirmed">
+        <div class="state-icon-badge green-halo">🎉</div>
+        <h2 class="info-heading">Entry Logged Successfully!</h2>
+        <div class="confirmed-purpose" id="confirmedPurpose">General Space</div>
+        <p class="info-body">
+          Welcome to CSUCC Athenaeum, <strong id="confirmedName">—</strong>!<br/>
+          Have a productive and focused session.
+        </p>
+      </div>
+
+      <!-- Stranger / alert state -->
+      <div class="info-state hidden" id="stateAlert">
+        <div class="state-icon-badge red-halo blink">🚨</div>
+        <h2 class="info-heading alert-heading">Unauthorized Entry</h2>
+        <p class="info-body">
+          Your face was not recognized in the CSUCC biometric system.<br/>
+          Security staff has been notified.<br/>
+          Please proceed to the <strong>Athenaeum Registration Desk</strong>.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const KIOSK_MODE = "entry";
+  </script>
+  <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
+</body>
+</html>

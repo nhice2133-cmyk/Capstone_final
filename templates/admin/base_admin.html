@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block body_class %}admin-body{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-wrap">
+        <img src="{{ url_for('static', filename='images/csu_seal.png') }}" alt="CSU Seal" class="sidebar-csu-seal" />
+      </div>
+      <div class="sidebar-brand">
+        <span class="brand-name">CSUCC ATHENAEUM</span>
+        <span class="brand-sub">Smart Entry Admin</span>
+      </div>
+    </div>
+
+    <div class="sidebar-campus-strip">
+      <span>CABADBARAN CAMPUS</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">OVERVIEW</div>
+      <a href="{{ url_for('dashboard.home') }}" class="nav-item {% if request.endpoint == 'dashboard.home' %}active{% endif %}">
+        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+      </a>
+
+      <div class="nav-section-label">MANAGEMENT</div>
+      <a href="{{ url_for('students.enroll_page') }}" class="nav-item {% if request.endpoint in ['students.enroll_page'] %}active{% endif %}">
+        <span class="nav-icon">📷</span><span class="nav-label">Enroll User / Guest</span>
+      </a>
+      <a href="{{ url_for('students.list_students') }}" class="nav-item {% if request.endpoint == 'students.list_students' %}active{% endif %}">
+        <span class="nav-icon">👥</span><span class="nav-label">Enrolled Users</span>
+      </a>
+
+      <div class="nav-section-label">RECORDS &amp; SURVEILLANCE</div>
+      <a href="{{ url_for('attendance.attendance_page') }}" class="nav-item {% if request.endpoint == 'attendance.attendance_page' %}active{% endif %}">
+        <span class="nav-icon">📋</span><span class="nav-label">Attendance Logs</span>
+      </a>
+      <a href="{{ url_for('kiosk.alerts_page') }}" class="nav-item {% if request.endpoint == 'kiosk.alerts_page' %}active{% endif %}">
+        <span class="nav-icon">🚨</span>
+        <span class="nav-label">Security Alerts</span>
+        {% set alert_count = pending_alerts_count | default(0) %}
+        {% if alert_count > 0 %}
+          <span class="badge badge-danger sidebar-alert-pill">{{ alert_count }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('attendance.analytics_page') }}" class="nav-item {% if request.endpoint == 'attendance.analytics_page' %}active{% endif %}">
+        <span class="nav-icon">📈</span><span class="nav-label">Analytics &amp; Trends</span>
+      </a>
+
+      <div class="nav-section-label">KIOSK TERMINAL</div>
+      <a href="{{ url_for('kiosk.kiosk_entry') }}" class="nav-item nav-kiosk-link" target="_blank">
+        <span class="nav-icon">🏛️</span><span class="nav-label">Smart Entry Kiosk</span>
+      </a>
+
+      <div class="nav-section-label">SYSTEM &amp; AI MODELS</div>
+      <a href="{{ url_for('models.models_dashboard') }}" class="nav-item {% if request.endpoint == 'models.models_dashboard' %}active{% endif %}">
+        <span class="nav-icon">🧠</span><span class="nav-label">AI Models &amp; Accuracy</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main content area -->
+  <div class="admin-main">
+    <!-- Top bar -->
+    <header class="admin-topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">☰</button>
+        <div class="topbar-title-block">
+          <div class="topbar-facility">CARAGA STATE UNIVERSITY CABADBARAN CAMPUS</div>
+          <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <a href="{{ url_for('kiosk.kiosk_entry') }}" target="_blank" class="btn btn-sm btn-ghost topbar-kiosk-btn">
+          <span>🏛️</span> Open Kiosk
+        </a>
+        <div class="topbar-clock-box">
+          <span class="topbar-clock-label">PHT</span>
+          <span class="topbar-time" id="adminClock">--:--</span>
+        </div>
+        <div class="topbar-admin-wrapper" id="adminDropdownWrapper">
+          <button class="topbar-admin-badge" id="adminDropdownBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Administrator Account Menu">
+            <span class="admin-dot"></span>
+            <span class="topbar-admin">{{ current_user.username|title if current_user.is_authenticated else 'Administrator' }}</span>
+            <svg class="admin-chevron" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+          
+          <div class="admin-dropdown-menu" id="adminDropdownMenu">
+            <div class="admin-dropdown-header">
+              <div class="admin-avatar">
+                <span>🛡️</span>
+              </div>
+              <div class="admin-user-info">
+                <div class="admin-display-name">{{ current_user.username|title if current_user.is_authenticated else 'Administrator' }}</div>
+                <div class="admin-role-badge">System Administrator</div>
+              </div>
+            </div>
+            
+            <div class="admin-dropdown-divider"></div>
+            
+            <a href="{{ url_for('backup.backup_dashboard') }}" class="admin-dropdown-item {% if request.endpoint and request.endpoint.startswith('backup.') %}active{% endif %}">
+              <span class="dropdown-item-icon">💾</span>
+              <div class="dropdown-item-text">
+                <span class="dropdown-item-title">Backup &amp; Restore</span>
+                <span class="dropdown-item-desc">System snapshots &amp; recovery</span>
+              </div>
+            </a>
+            
+            <div class="admin-dropdown-divider"></div>
+            
+            <a href="{{ url_for('auth.change_password') }}" class="admin-dropdown-item {% if request.endpoint == 'auth.change_password' %}active{% endif %}">
+              <span class="dropdown-item-icon">🔒</span>
+              <div class="dropdown-item-text">
+                <span class="dropdown-item-title">Change Password</span>
+                <span class="dropdown-item-desc">Update account credentials</span>
+              </div>
+            </a>
+            
+            <div class="admin-dropdown-divider"></div>
+            
+            <a href="{{ url_for('auth.logout') }}" class="admin-dropdown-item dropdown-item-danger">
+              <span class="dropdown-item-icon">🚪</span>
+              <div class="dropdown-item-text">
+                <span class="dropdown-item-title">Sign Out</span>
+                <span class="dropdown-item-desc">End active session</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }} <button onclick="this.parentElement.remove()">✕</button></div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- Page content -->
+    <div class="admin-content">
+      {% block admin_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("adminClock").textContent =
+      now.toLocaleTimeString("en-PH", {hour: "2-digit", minute: "2-digit"});
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  // Sidebar toggle
+  document.getElementById("sidebarToggle").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.toggle("collapsed");
+  });
+
+  // Admin dropdown toggle
+  const adminBtn = document.getElementById("adminDropdownBtn");
+  const adminMenu = document.getElementById("adminDropdownMenu");
+  const adminWrapper = document.getElementById("adminDropdownWrapper");
+
+  if (adminBtn && adminMenu) {
+    adminBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = adminMenu.classList.toggle("show");
+      adminBtn.classList.toggle("active", isOpen);
+      adminBtn.setAttribute("aria-expanded", isOpen);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (adminWrapper && !adminWrapper.contains(e.target)) {
+        adminMenu.classList.remove("show");
+        adminBtn.classList.remove("active");
+        adminBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        adminMenu.classList.remove("show");
+        adminBtn.classList.remove("active");
+        adminBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+</script>
+{% endblock %}
+

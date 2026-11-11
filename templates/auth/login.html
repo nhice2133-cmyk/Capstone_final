@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Admin Login — CSUCC Athenaeum SMART ENTRY{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="auth-bg">
+  <!-- Subtle ambient particles and background graphic -->
+  <div class="auth-bg-overlay"></div>
+  <div class="auth-particles">
+    <div class="auth-particle auth-particle-green"></div>
+    <div class="auth-particle auth-particle-gold"></div>
+    <div class="auth-particle auth-particle-spruce"></div>
+  </div>
+
+  <!-- Floating Toast Notifications (Does not alter or push down the login form) -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="auth-toast-container">
+    {% for category, message in messages %}
+    <div class="auth-toast flash auth-toast-{{ category }} flash-{{ category }}">
+      <span class="auth-toast-icon">
+        {% if category == 'success' %}✅
+        {% elif category == 'error' %}⚠️
+        {% elif category == 'info' %}ℹ️
+        {% else %}🔔{% endif %}
+      </span>
+      <span class="auth-toast-msg">{{ message }}</span>
+      <button type="button" class="auth-toast-close" onclick="this.parentElement.remove()" title="Dismiss">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <div class="auth-container">
+    <!-- Visual Hero Banner of CSUCC Athenaeum -->
+    <div class="auth-hero-banner">
+      <img id="loginBannerImg" src="{{ url_for('static', filename='images/Campus_Facade.png') }}"
+        alt="CSUCC Athenaeum Banner" class="auth-banner-img" style="transition: opacity 0.6s ease-in-out;" />
+      <div class="auth-banner-gradient"></div>
+      <div class="auth-banner-content">
+        <div class="auth-seal-badge">
+          <img src="{{ url_for('static', filename='images/csu_seal.png') }}" alt="CSU Seal" />
+        </div>
+        <div class="auth-banner-meta">
+          <span class="auth-banner-sub">REPUBLIC OF THE PHILIPPINES</span>
+          <h1 class="auth-banner-title">CARAGA STATE UNIVERSITY</h1>
+          <span class="auth-banner-campus">CABADBARAN CAMPUS • ATHENAEUM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Form Card -->
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-badge">ADMINISTRATION PORTAL</div>
+        <h2 class="auth-card-title">Athenaeum Smart Entry</h2>
+        <p class="auth-card-desc">Sign in with authorized administrator credentials to manage records, enrollment, and
+          kiosks.</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+        <div class="form-group">
+          <label for="username">Administrator Username</label>
+          <div class="input-wrapper">
+            <span class="input-icon">👤</span>
+            <input type="text" id="username" name="username" placeholder="Enter admin username" autocomplete="username"
+              required autofocus />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label-row"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="password" style="margin-bottom: 0;">Security Password</label>
+            <a href="{{ url_for('auth.forgot_password') }}" class="auth-link-forgot"
+              style="font-size: 0.78rem; color: var(--csu-gold-400); text-decoration: none; font-weight: 600; transition: color 0.15s;"
+              title="Recover administrator password">Forgot password?</a>
+          </div>
+          <div class="input-wrapper">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" name="password" placeholder="Enter security password"
+              autocomplete="current-password" required />
+            <button type="button" class="toggle-pw" id="togglePw" title="Show password" aria-label="Show password">
+              <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full auth-submit-btn" id="loginBtn">
+          <span>Sign In to Dashboard</span>
+          <span>→</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <a href="{{ url_for('kiosk.kiosk_entry') }}" class="back-link">
+          <span>←</span> Back to Athenaeum Entry Kiosk
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const EYE_OPEN_SVG = `<svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+  const EYE_SLASH_SVG = `<svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+  const toggleBtn = document.getElementById("togglePw");
+  const pwInput = document.getElementById("password");
+  if (toggleBtn && pwInput) {
+    toggleBtn.addEventListener("click", function () {
+      const isPassword = pwInput.type === "password";
+      pwInput.type = isPassword ? "text" : "password";
+      toggleBtn.innerHTML = isPassword ? EYE_SLASH_SVG : EYE_OPEN_SVG;
+      const label = isPassword ? "Hide password" : "Show password";
+      toggleBtn.title = label;
+      toggleBtn.setAttribute("aria-label", label);
+    });
+  }
+
+  // Cycle through ALL campus images on the login screen
+  const LOGIN_SLIDES = [
+    "{{ url_for('static', filename='images/Campus_Facade.png') }}",
+    "{{ url_for('static', filename='images/Athenaeum.png') }}",
+    "{{ url_for('static', filename='images/Campus_Library.png') }}",
+    "{{ url_for('static', filename='images/csucc_campus_field_hd.jpg') }}",
+    "{{ url_for('static', filename='images/csucc_admin_building_hd.jpg') }}",
+    "{{ url_for('static', filename='images/csucc_banner_hd.png') }}",
+    "{{ url_for('static', filename='images/athenaeum_building.jpg') }}"
+  ];
+
+  let loginSlideIdx = 0;
+  setInterval(() => {
+    loginSlideIdx = (loginSlideIdx + 1) % LOGIN_SLIDES.length;
+    const nextImg = LOGIN_SLIDES[loginSlideIdx];
+
+    // Update Full-screen Background Overlay
+    const bgOverlay = document.querySelector(".auth-bg-overlay");
+    if (bgOverlay) {
+      bgOverlay.style.backgroundImage = `url('${nextImg}')`;
+    }
+
+    // Update Hero Card Image
+    const bannerImg = document.getElementById("loginBannerImg");
+    if (bannerImg) {
+      bannerImg.style.opacity = "0.3";
+      setTimeout(() => {
+        bannerImg.src = nextImg;
+        bannerImg.style.opacity = "1";
+      }, 350);
+    }
+  }, 5000);
+
+  // Auto-dismiss floating toasts smoothly
+  document.querySelectorAll(".auth-toast").forEach(toast => {
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(-14px) scale(0.95)";
+      setTimeout(() => toast.remove(), 350);
+    }, 4500);
+  });
+</script>
+{% endblock %}

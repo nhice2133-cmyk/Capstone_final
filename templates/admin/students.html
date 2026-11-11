@@ -1,0 +1,126 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Registry — CSUCC Athenaeum SMART ENTRY{% endblock %}
+{% block page_title %}Athenaeum User &amp; Student Registry{% endblock %}
+
+{% block admin_content %}
+<div class="toolbar" style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+  <a href="{{ url_for('students.enroll_page') }}" class="btn btn-primary">
+    <span>➕</span> Enroll New User / Student
+  </a>
+  
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <select id="programFilter" style="padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: rgba(6, 21, 13, 0.7); color: var(--text-primary); cursor: pointer;">
+      <option value="all">All Programs</option>
+    </select>
+    <select id="statusFilter" style="padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: rgba(6, 21, 13, 0.7); color: var(--text-primary); cursor: pointer;">
+      <option value="all">All Accounts</option>
+      <option value="active">Active Only</option>
+      <option value="inactive">Deactivated Only</option>
+    </select>
+    <input type="text" id="searchStudents" placeholder="Search name or ID…" class="search-input" style="margin: 0;" />
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span>👥 Enrolled Athenaeum Users ({{ students | length }})</span>
+      <span class="badge badge-csucc">CSUCC CAMPUS</span>
+    </div>
+  </div>
+
+  <div class="card-body p-0">
+    <table class="table" id="studentsTable">
+      <thead>
+        <tr>
+          <th>#</th><th>Full Name</th><th>Student / Guest ID</th>
+          <th>Role / Program</th><th>Enrolled At</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr class="student-row">
+          <td>{{ loop.index }}</td>
+          <td><strong>{{ s.full_name }}</strong></td>
+          <td><code>{{ s.student_id }}</code></td>
+          <td>
+            {% if s.program == 'Guest' %}
+              <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35);">👤 Guest</span>
+            {% else %}
+              <span class="badge badge-info">{{ s.program }}</span>
+            {% endif %}
+          </td>
+          <td>{{ s.enrolled_at }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if s.status == 'active' else 'badge-muted' }}">
+              {{ s.status.capitalize() }}
+            </span>
+          </td>
+          <td class="actions-cell">
+            <form method="POST" action="{{ url_for('students.toggle_student', student_db_id=s.id) }}"
+                  style="display:inline;">
+              <button type="submit" class="btn btn-sm {{ 'btn-warning' if s.status == 'active' else 'btn-success' }}">
+                {{ '⏸ Deactivate' if s.status == 'active' else '▶ Activate' }}
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('students.delete_student', student_db_id=s.id) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Delete {{ s.full_name }}? This cannot be undone.');">
+              <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted">No students enrolled yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const searchInput = document.getElementById("searchStudents");
+  const statusFilter = document.getElementById("statusFilter");
+  const programFilter = document.getElementById("programFilter");
+
+  // Populate program filter dynamically based on available students
+  const uniquePrograms = new Set();
+  document.querySelectorAll(".student-row").forEach(row => {
+    uniquePrograms.add(row.cells[3].textContent.trim());
+  });
+  uniquePrograms.forEach(prog => {
+    if (prog) {
+      const opt = document.createElement("option");
+      opt.value = prog;
+      opt.textContent = prog;
+      programFilter.appendChild(opt);
+    }
+  });
+
+  function filterTable() {
+    const q = searchInput.value.toLowerCase();
+    const statusVal = statusFilter.value; // "all", "active", "inactive"
+    const programVal = programFilter.value; // "all" or specific program
+
+    document.querySelectorAll(".student-row").forEach(row => {
+      // cells[1] is Full Name, cells[2] is Student ID, cells[3] is Program, cells[5] is Status
+      const name = row.cells[1].textContent.toLowerCase();
+      const studentId = row.cells[2].textContent.toLowerCase();
+      const programText = row.cells[3].textContent.trim();
+      const statusText = row.cells[5].textContent.trim().toLowerCase();
+      
+      const matchesSearch = name.includes(q) || studentId.includes(q);
+      const matchesStatus = (statusVal === "all") || (statusText === statusVal);
+      const matchesProgram = (programVal === "all") || (programText === programVal);
+
+      row.style.display = (matchesSearch && matchesStatus && matchesProgram) ? "" : "none";
+    });
+  }
+
+  searchInput.addEventListener("input", filterTable);
+  statusFilter.addEventListener("change", filterTable);
+  programFilter.addEventListener("change", filterTable);
+</script>
+{% endblock %}

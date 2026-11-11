@@ -1,0 +1,596 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Biometric Enrollment — CSUCC Athenaeum SMART ENTRY{% endblock %}
+{% block page_title %}Biometric Enrollment{% endblock %}
+
+{% block admin_content %}
+<div class="enrollment-layout">
+  <!-- Step progress bar -->
+  <div class="step-bar">
+    <div class="step active" id="step1Indicator"><span>1</span> <span class="step-label">Identity Info</span></div>
+    <div class="step-line"></div>
+    <div class="step" id="step2Indicator"><span>2</span> <span class="step-label">Face Capture</span> <small
+        class="step-sub">(20 Samples)</small></div>
+    <div class="step-line"></div>
+    <div class="step" id="step3Indicator"><span>3</span> <span class="step-label">Finalize</span></div>
+  </div>
+
+  <!-- Step 1: User info form -->
+  <div class="enrollment-step" id="step1">
+    <div class="card enrollment-card-compact">
+      <div class="card-header card-header-compact">
+        <span id="enrollCardHeader" class="card-header-title">📝 Enrollment &amp; Institutional Information</span>
+        <span class="badge badge-csucc">CSUCC REGISTRY</span>
+      </div>
+      <div class="card-body card-body-compact">
+        <!-- User Category Selector -->
+        <div class="user-type-pills">
+          <button type="button" class="type-pill active" id="btnTypeStudent" data-type="student">
+            <span class="pill-icon">🎓</span>
+            <span class="pill-text">Student / Personnel</span>
+          </button>
+          <button type="button" class="type-pill" id="btnTypeGuest" data-type="guest">
+            <span class="pill-icon">👤</span>
+            <span class="pill-text">Guest / Visitor <small class="pill-sub">(No ID Needed)</small></span>
+          </button>
+        </div>
+        <input type="hidden" id="userType" name="user_type" value="student" />
+
+        <form id="studentInfoForm" class="enrollment-form-compact">
+          <!-- Program / Visit Category Dropdown Section (Placed on Top) -->
+          <div class="form-group" id="groupProgram">
+            <div class="form-label-row">
+              <label for="program" id="lblProgram">Program / Department / Visit Category *</label>
+              <span class="guest-indicator hidden" id="guestModeIndicator">👤 Guest Mode: No ID Needed</span>
+            </div>
+            <div class="combobox-wrap" id="programComboboxWrap">
+              <div class="combobox-control">
+                <span class="combobox-prefix-icon">🔍</span>
+                <input type="text" id="program" name="program" class="combobox-input"
+                  placeholder="Search program, department, or select guest category…" autocomplete="off" required />
+                <button type="button" class="combobox-clear-btn hidden" id="btnClearProgram"
+                  title="Clear selection">✕</button>
+                <button type="button" class="combobox-toggle-btn" id="btnToggleProgram"
+                  title="Show all categories">▼</button>
+              </div>
+
+              <div class="combobox-menu hidden" id="programMenu" role="listbox">
+                <!-- Group 1: Guests & Visitors -->
+                <div class="combobox-group">
+                  <div class="combobox-group-header">
+                    <span>👤 GUEST &amp; VISITORS</span>
+                    <span class="group-header-sub">No ID Needed</span>
+                  </div>
+                  <div class="combobox-item guest-item" data-value="Guest" data-type="guest"
+                    data-name="Guest / Athenaeum Visitor" role="option">
+                    <div class="item-main">
+                      <span class="item-badge badge-guest">GUEST</span>
+                      <span class="item-title">Guest / Athenaeum Visitor</span>
+                    </div>
+                    <span class="item-meta">External Visitor</span>
+                  </div>
+                  <div class="combobox-item guest-item" data-value="Visiting-Researcher" data-type="guest"
+                    data-name="Visiting Researcher / Scholar" role="option">
+                    <div class="item-main">
+                      <span class="item-badge badge-guest">GUEST</span>
+                      <span class="item-title">Visiting Researcher / Scholar</span>
+                    </div>
+                    <span class="item-meta">Academic Guest</span>
+                  </div>
+                  <div class="combobox-item guest-item" data-value="Community-User" data-type="guest"
+                    data-name="Community / External User" role="option">
+                    <div class="item-main">
+                      <span class="item-badge badge-guest">GUEST</span>
+                      <span class="item-title">Community / External User</span>
+                    </div>
+                    <span class="item-meta">Public Guest</span>
+                  </div>
+                </div>
+
+                <!-- Group 2: CEIT (College of Engineering and Information Technology) -->
+                <div class="combobox-group">
+                  <div class="combobox-group-header">
+                    <span>⚙️ CEIT — ENGINEERING &amp; INFO TECHNOLOGY</span>
+                    <span class="group-header-sub">4 Programs</span>
+                  </div>
+                  <div class="combobox-item" data-value="BSIT" data-type="student"
+                    data-name="BS Information Technology (BSIT) CEIT College of Engineering and Information Technology"
+                    role="option">
+                    <div class="item-main">
+                      <span class="item-badge badge-ceit">BSIT</span>
+                      <span class="item-title">BS Information Technology</span>
+                    </div>
+                    <span class="item-meta">CEIT</span>
+                  </div>
+                    <div class="combobox-item" data-value="BSEE" data-type="student"
+                      data-name="BS Electrical Engineering (BSEE) CEIT College of Engineering and Information Technology"
+                      role="option">
+                      <div class="item-main">
+                        <span class="item-badge badge-ceit">BSEE</span>
+                        <span class="item-title">BS Electrical Engineering</span>
+                      </div>
+                      <span class="item-meta">CEIT</span>
+                    </div>
+                      <div class="combobox-item" data-value="BSCPE" data-type="student"
+                        data-name="BS Computer Engineering (BSCPE) CEIT College of Engineering and Information Technology"
+                        role="option">
+                        <div class="item-main">
+                          <span class="item-badge badge-ceit">BSCPE</span>
+                          <span class="item-title">BS Computer Engineering</span>
+                        </div>
+                        <span class="item-meta">CEIT</span>
+                      </div>
+                        <div class="combobox-item" data-value="EET" data-type="student"
+                          data-name="Electrical Engineering Technology (EET) CEIT College of Engineering and Information Technology"
+                          role="option">
+                          <div class="item-main">
+                            <span class="item-badge badge-ceit">EET</span>
+                            <span class="item-title">Electrical Engineering Technology</span>
+                          </div>
+                          <span class="item-meta">CEIT</span>
+                        </div>
+                        </div>
+
+                        <!-- Group 3: CITTE (College of Industrial Technology and Teacher Education) -->
+                        <div class="combobox-group">
+                          <div class="combobox-group-header">
+                            <span>🛠️ CITTE — INDUSTRIAL TECHNOLOGY &amp; TEACHER EDUCATION</span>
+                            <span class="group-header-sub">18 Programs</span>
+                          </div>
+                          <!-- BS Industrial Technology Majors -->
+                          <div class="combobox-item" data-value="BSIT-ADT" data-type="student"
+                            data-name="BS Industrial Technology Major in Architectural Drafting Technology (BSIT-ADT) CITTE"
+                            role="option" title="BS Industrial Technology Major in Architectural Drafting Technology">
+                            <div class="item-main">
+                              <span class="item-badge badge-citte">BSIT-ADT</span>
+                              <span class="item-title">BSIT - Architectural Drafting Tech</span>
+                            </div>
+                            <span class="item-meta">CITTE</span>
+                          </div>
+                            <div class="combobox-item" data-value="BSIT-AT" data-type="student"
+                              data-name="BS Industrial Technology Major in Automotive Technology (BSIT-AT) CITTE"
+                              role="option" title="BS Industrial Technology Major in Automotive Technology">
+                              <div class="item-main">
+                                <span class="item-badge badge-citte">BSIT-AT</span>
+                                <span class="item-title">BSIT - Automotive Technology</span>
+                              </div>
+                              <span class="item-meta">CITTE</span>
+                            </div>
+                              <div class="combobox-item" data-value="BSIT-CT" data-type="student"
+                                data-name="BS Industrial Technology Major in Civil Technology (BSIT-CT) CITTE"
+                                role="option" title="BS Industrial Technology Major in Civil Technology">
+                                <div class="item-main">
+                                  <span class="item-badge badge-citte">BSIT-CT</span>
+                                  <span class="item-title">BSIT - Civil Technology</span>
+                                </div>
+                                <span class="item-meta">CITTE</span>
+                              </div>
+                                <div class="combobox-item" data-value="BSIT-ET" data-type="student"
+                                  data-name="BS Industrial Technology Major in Electrical Technology (BSIT-ET) CITTE"
+                                  role="option" title="BS Industrial Technology Major in Electrical Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BSIT-ET</span>
+                                    <span class="item-title">BSIT - Electrical Technology</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSIT-ELT" data-type="student"
+                                  data-name="BS Industrial Technology Major in Electronics Technology (BSIT-ELT) CITTE"
+                                  role="option" title="BS Industrial Technology Major in Electronics Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BSIT-ELT</span>
+                                    <span class="item-title">BSIT - Electronics Technology</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSIT-FPSMT" data-type="student"
+                                  data-name="BS Industrial Technology Major in Food Preparation & Services Management Technology (BSIT-FPSMT) CITTE"
+                                  role="option"
+                                  title="BS Industrial Technology Major in Food Preparation & Services Management Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BSIT-FPSM</span>
+                                    <span class="item-title">BSIT - Food Prep &amp; Services Mgmt</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSIT-GFDT" data-type="student"
+                                  data-name="BS Industrial Technology Major in Garments, Fashion & Design Technology (BSIT-GFDT) CITTE"
+                                  role="option"
+                                  title="BS Industrial Technology Major in Garments, Fashion & Design Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BSIT-GFD</span>
+                                    <span class="item-title">BSIT - Garments, Fashion &amp; Design</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSIT-WFT" data-type="student"
+                                  data-name="BS Industrial Technology Major in Welding and Fabrication Technology (BSIT-WFT) CITTE"
+                                  role="option"
+                                  title="BS Industrial Technology Major in Welding and Fabrication Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BSIT-WFT</span>
+                                    <span class="item-title">BSIT - Welding &amp; Fabrication</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+
+                                <!-- Bachelor of Technical - Vocational Teacher Education Majors -->
+                                <div class="combobox-item" data-value="BTVTED-AD" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Architectural Drafting (BTVTEd-AD) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Architectural Drafting">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-AD</span>
+                                    <span class="item-title">BTVTEd - Architectural Drafting</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-AT" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Automotive Technology (BTVTEd-AT) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Automotive Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-AT</span>
+                                    <span class="item-title">BTVTEd - Automotive Technology</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-CCT" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Civil and Construction Technology (BTVTEd-CCT) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Civil and Construction Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-CCT</span>
+                                    <span class="item-title">BTVTEd - Civil &amp; Construction</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-ET" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Electrical Technology (BTVTEd-ET) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Electrical Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-ET</span>
+                                    <span class="item-title">BTVTEd - Electrical Technology</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-ELT" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Electronics Technology (BTVTEd-ELT) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Electronics Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-ELT</span>
+                                    <span class="item-title">BTVTEd - Electronics Technology</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-FSM" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Food Service Management (BTVTEd-FSM) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Food Service Management">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-FSM</span>
+                                    <span class="item-title">BTVTEd - Food Service Management</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-GFD" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Garments, Fashion and Design (BTVTEd-GFD) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Garments, Fashion and Design">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-GFD</span>
+                                    <span class="item-title">BTVTEd - Garments, Fashion &amp; Design</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTVTED-WFT" data-type="student"
+                                  data-name="Bachelor of Technical - Vocational Teacher Education Major in Welding & Fabrication Technology (BTVTEd-WFT) BTVTED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technical - Vocational Teacher Education Major in Welding & Fabrication Technology">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTVTED-WFT</span>
+                                    <span class="item-title">BTVTEd - Welding &amp; Fabrication</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+
+                                <!-- Bachelor of Technology and Livelihood Education Majors -->
+                                <div class="combobox-item" data-value="BTLED-HE" data-type="student"
+                                  data-name="Bachelor of Technology and Livelihood Education Major in Home Economics (BTLEd-HE) BTLED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technology and Livelihood Education Major in Home Economics">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTLED-HE</span>
+                                    <span class="item-title">BTLEd - Home Economics</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                                <div class="combobox-item" data-value="BTLED-IA" data-type="student"
+                                  data-name="Bachelor of Technology and Livelihood Education Major in Industrial Arts (BTLEd-IA) BTLED CITTE"
+                                  role="option"
+                                  title="Bachelor of Technology and Livelihood Education Major in Industrial Arts">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-citte">BTLED-IA</span>
+                                    <span class="item-title">BTLEd - Industrial Arts</span>
+                                  </div>
+                                  <span class="item-meta">CITTE</span>
+                                </div>
+                              </div>
+
+                              <!-- Group 4: CTHM (College of Tourism and Hospitality Management) -->
+                              <div class="combobox-group">
+                                <div class="combobox-group-header">
+                                  <span>🏨 CTHM — TOURISM &amp; HOSPITALITY MANAGEMENT</span>
+                                  <span class="group-header-sub">3 Programs</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSTM" data-type="student"
+                                  data-name="BS Tourism Management (BSTM) CTHM College of Tourism and Hospitality Management"
+                                  role="option" title="BS Tourism Management">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-cthm">BSTM</span>
+                                    <span class="item-title">BS Tourism Management</span>
+                                  </div>
+                                  <span class="item-meta">CTHM</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSHM" data-type="student"
+                                  data-name="BS Hospitality Management (BSHM) CTHM College of Tourism and Hospitality Management" role="option"
+                                  title="BS Hospitality Management">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-cthm">BSHM</span>
+                                    <span class="item-title">BS Hospitality Management</span>
+                                  </div>
+                                  <span class="item-meta">CTHM</span>
+                                </div>
+                                <div class="combobox-item" data-value="BSFBSM" data-type="student"
+                                  data-name="BS Food and Beverage Service Management (BSFBSM) CTHM College of Tourism and Hospitality Management"
+                                  role="option" title="BS Food and Beverage Service Management">
+                                  <div class="item-main">
+                                    <span class="item-badge badge-cthm">BSFBSM</span>
+                                    <span class="item-title">BS Food &amp; Beverage Service Mgmt</span>
+                                  </div>
+                                  <span class="item-meta">CTHM</span>
+                                </div>
+                              </div>
+
+                                <!-- Group 5: CBA (College of Business and Accountancy) -->
+                                <div class="combobox-group">
+                                  <div class="combobox-group-header">
+                                    <span>💼 CBA — BUSINESS &amp; ACCOUNTANCY</span>
+                                    <span class="group-header-sub">5 Programs</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="BSA" data-type="student"
+                                    data-name="BS Accountancy (BSA) CBA College of Business and Accountancy"
+                                    role="option" title="BS Accountancy">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-cba">BSA</span>
+                                      <span class="item-title">BS Accountancy</span>
+                                    </div>
+                                    <span class="item-meta">CBA</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="BSMA" data-type="student"
+                                    data-name="BS Management Accounting (BSMA) CBA College of Business and Accountancy"
+                                    role="option" title="BS Management Accounting">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-cba">BSMA</span>
+                                      <span class="item-title">BS Management Accounting</span>
+                                    </div>
+                                    <span class="item-meta">CBA</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="BSOA" data-type="student"
+                                    data-name="BS Office Administration (BSOA) CBA College of Business and Accountancy"
+                                    role="option" title="BS Office Administration">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-cba">BSOA</span>
+                                      <span class="item-title">BS Office Administration</span>
+                                    </div>
+                                    <span class="item-meta">CBA</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="BSBA" data-type="student"
+                                    data-name="BS Business Administration (BSBA) CBA College of Business and Accountancy"
+                                    role="option" title="BS Business Administration">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-cba">BSBA</span>
+                                      <span class="item-title">BS Business Administration</span>
+                                    </div>
+                                    <span class="item-meta">CBA</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="BSENTREP" data-type="student"
+                                    data-name="BS Entrepreneurship (BSENTREP) CBA College of Business and Accountancy"
+                                    role="option" title="BS Entrepreneurship">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-cba">BSENTREP</span>
+                                      <span class="item-title">BS Entrepreneurship</span>
+                                    </div>
+                                    <span class="item-meta">CBA</span>
+                                  </div>
+                                </div>
+
+                                <!-- Group 3: Institutional & Staff -->
+                                <div class="combobox-group">
+                                  <div class="combobox-group-header">
+                                    <span>🏛️ INSTITUTIONAL &amp; PERSONNEL</span>
+                                    <span class="group-header-sub">University Staff</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="Faculty/Employee" data-type="student"
+                                    data-name="CSU Faculty & Personnel" role="option">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-emp">FACULTY</span>
+                                      <span class="item-title">CSU Faculty &amp; Personnel</span>
+                                    </div>
+                                    <span class="item-meta">Academic / Admin Staff</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="Library-Staff" data-type="student"
+                                    data-name="Athenaeum Library Staff" role="option">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-emp">LIBRARY</span>
+                                      <span class="item-title">Athenaeum Library Staff</span>
+                                    </div>
+                                    <span class="item-meta">Library Administration</span>
+                                  </div>
+                                  <div class="combobox-item" data-value="Others" data-type="student"
+                                    data-name="Others / External" role="option">
+                                    <div class="item-main">
+                                      <span class="item-badge badge-other">OTHER</span>
+                                      <span class="item-title">Others / External</span>
+                                    </div>
+                                    <span class="item-meta">Affiliated Personnel</span>
+                                  </div>
+                                </div>
+
+                                <div class="combobox-no-results hidden" id="comboboxNoResults">
+                                  <span>No matching categories found.</span>
+                                  <small>Press Enter to use your typed custom category.</small>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- 2 Boxes: First Name and Last Name with Real-Time Validation -->
+                          <div class="form-row" id="nameFormRow">
+                            <div class="form-group" id="groupFirstName">
+                              <label for="firstName" id="lblFirstName">First Name *</label>
+                              <div class="input-with-feedback">
+                                <input type="text" id="firstName" name="first_name" placeholder="e.g. Juan"
+                                  autocomplete="off" required />
+                                <span class="input-status-icon" id="firstNameIcon"></span>
+                              </div>
+                              <div class="field-error-msg hidden" id="firstNameError"></div>
+                            </div>
+                            <div class="form-group" id="groupLastName">
+                              <label for="lastName" id="lblLastName">Last Name *</label>
+                              <div class="input-with-feedback">
+                                <input type="text" id="lastName" name="last_name" placeholder="e.g. Dela Cruz"
+                                  autocomplete="off" required />
+                                <span class="input-status-icon" id="lastNameIcon"></span>
+                              </div>
+                              <div class="field-error-msg hidden" id="lastNameError"></div>
+                            </div>
+                          </div>
+                          <div class="name-duplicate-alert hidden" id="nameDuplicateAlert"></div>
+                          <input type="hidden" id="fullName" name="full_name" />
+
+                          <!-- Student / Employee ID Field (Hidden in Guest Mode - Max 10 chars) -->
+                          <div class="form-group" id="groupStudentId">
+                            <div class="form-label-row">
+                              <label for="studentId" id="lblStudentId">Student / Employee ID *</label>
+                              <span class="char-counter" id="idCharCounter">0 / 10</span>
+                            </div>
+                            <div class="input-with-feedback">
+                              <input type="text" id="studentId" name="student_id" placeholder="e.g. 211-00123"
+                                maxlength="10" autocomplete="off" required />
+                              <span class="input-status-icon" id="studentIdIcon"></span>
+                            </div>
+                            <div class="field-error-msg hidden" id="studentIdError"></div>
+                          </div>
+                          <div id="infoMessage" class="form-msg"></div>
+                          <button type="submit" class="btn btn-primary btn-save-compact" id="btnSaveInfo">
+                            <span>Save &amp; Proceed to Face Capture</span>
+                            <span>→</span>
+                          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Step 2: Face capture -->
+  <div class="enrollment-step hidden" id="step2">
+    <div class="enrollment-capture-layout">
+      <!-- Camera -->
+      <div class="capture-camera-panel">
+        <div class="camera-label">📷 Live Camera Preview</div>
+        <video id="enrollVideo" autoplay playsinline muted class="enroll-video"></video>
+        <canvas id="enrollCanvas" style="display:none;"></canvas>
+        <div class="capture-progress-bar">
+          <div class="capture-progress-fill" id="captureProgressFill" style="width:0%"></div>
+        </div>
+        <div class="capture-count">
+          <span id="captureCount">0</span> / 20 images captured
+        </div>
+        <div id="guidanceBanner" class="guidance-banner">
+          🎯 Phase 1/4: Look straight at the camera with a neutral expression (5 frontal images).
+        </div>
+        <div id="captureMsg" class="capture-msg"></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="capture-controls-panel">
+        <div class="instructions-card">
+          <h3>📋 Instructions</h3>
+          <ul>
+            <li>Ensure good lighting on your face.</li>
+            <li>Look straight at the camera.</li>
+            <li>Slowly turn slightly left, right, up, and down during capture.</li>
+            <li>Remove glasses if possible.</li>
+            <li>Keep a neutral expression.</li>
+          </ul>
+        </div>
+        <div class="student-preview-card">
+          <div class="preview-name" id="previewName">—</div>
+          <div class="preview-id" id="previewId">—</div>
+          <div class="preview-prog" id="previewProg">—</div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btnStartCapture">
+          ▶ Start Auto-Capture
+        </button>
+        <button class="btn btn-ghost btn-full hidden" id="btnRetake">
+          🔄 Retake
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Training -->
+  <div class="enrollment-step hidden" id="step3">
+    <div class="card training-card">
+      <div class="card-header">🧠 Finalizing Enrollment &amp; Model Training</div>
+      <div class="card-body text-center">
+        <div class="training-animation" id="trainingAnim">
+          <div class="training-spinner"></div>
+          <p>Verifying 20 face samples and training recognition model…</p>
+          <small>Registering student into database and updating biometric weights.</small>
+        </div>
+        <div class="training-result hidden" id="trainingResult"></div>
+        <button class="btn btn-primary hidden" id="btnEnrollAnother" onclick="location.reload()">
+          ➕ Enroll Another User
+        </button>
+        <a href="{{ url_for('students.list_students') }}" class="btn btn-ghost hidden" id="btnGoStudents">
+          👥 View All Users
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="{{ url_for('static', filename='js/enrollment.js') }}"></script>
+<script>
+  // Enforce 10-char limit counter for Student/Employee ID
+  (function() {
+    const sid = document.getElementById("studentId");
+    const cnt = document.getElementById("idCharCounter");
+    if (!sid || !cnt) return;
+
+    function updateCount() {
+      const val = sid.value || "";
+      const len = val.length;
+      cnt.textContent = len + " / 10";
+      if (len >= 10) {
+        if (len > 10) {
+          sid.value = val.slice(0, 10);
+          cnt.textContent = "10 / 10";
+        }
+        cnt.className = "char-counter limit-reached";
+      } else {
+        cnt.className = "char-counter";
+      }
+    }
+
+    sid.addEventListener("input", updateCount);
+    sid.addEventListener("change", updateCount);
+    sid.addEventListener("keyup", updateCount);
+    updateCount();
+  })();
+</script>
+{% endblock %}

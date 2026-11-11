@@ -1,0 +1,93 @@
+===============================================================================
+     SMART ENTRY: A Face Recognition-Based Attendance and Security
+     Surveillance Kiosk System For The CSUCC Library
+     HOW TO SET UP ON A NEW PC
+===============================================================================
+
+Setting this system up on a completely new PC is fast and automated! Since SMART
+ENTRY is an offline, edge-native web application, you just need Python and the
+automated launcher will handle the rest.
+
+-------------------------------------------------------------------------------
+STEP 1: COPY OR UNZIP THE PROJECT FOLDER
+-------------------------------------------------------------------------------
+Extract the "Capstone_Project-main" folder (or unzip SMART_ENTRY_CAPSTONE_PROJECT.zip)
+onto your new PC (e.g. on the Desktop or C:\ drive).
+
+-------------------------------------------------------------------------------
+STEP 2: INSTALL PYTHON (If not already installed)
+-------------------------------------------------------------------------------
+1. Download Python 3.10+ from https://www.python.org/downloads/
+2. Run the installer.
+3. *** IMPORTANT ***
+   At the very first installation screen, check the box:
+   [X] "Add Python to PATH" (or "Add python.exe to PATH")
+4. Click "Install Now".
+
+-------------------------------------------------------------------------------
+STEP 3: PLUG IN THE USB CAMERA
+-------------------------------------------------------------------------------
+Plug your 1080p HD USB camera into the new PC facing the library entrance portal.
+Windows will automatically recognize and configure the camera driver.
+(The default camera index is 0 in config.py).
+
+-------------------------------------------------------------------------------
+STEP 4: RUN THE ONE-CLICK WINDOWS INSTALLER (Smart_Entry_Setup.exe or setup.bat)
+-------------------------------------------------------------------------------
+We have provided a native graphical Windows installer wizard:
+
+  Option A — Native Executable:
+  • Double-click "Smart_Entry_Setup.exe" in the extracted folder.
+    * Note: If Windows Defender SmartScreen shows "Windows protected your PC",
+      click "More info" and then "Run anyway" (standard for custom academic builds).
+    * If prompted by Windows User Account Control (UAC), click "Yes".
+
+  Option B — Direct Setup Launcher (Bypasses SmartScreen):
+  • Double-click "setup.bat" in the extracted folder.
+    * Automatically opens the CSUCC Athenaeum Kiosk Setup Wizard!
+
+  Option C — All-in-One Console Launcher:
+  • Double-click "smart_entry_launcher.bat" and press [0] for Setup Wizard.
+
+  What the Setup Wizard does:
+    - Displays the graphical CSUCC Athenaeum Kiosk Setup Wizard
+    - Performs an automated pre-flight system check (Python, Camera, ONNX models)
+    - Automatically installs all computer vision, Flask, and AI dependencies
+    - Initializes the local SQLite database schema
+    - Creates genuine Windows Desktop shortcuts with official university icons:
+        * 🏛️ "SMART ENTRY Kiosk"
+        * 🌐 "SMART ENTRY Web App"
+    - Automatically launches the Kiosk and Admin Dashboard upon completion!
+
+-------------------------------------------------------------------------------
+STEP 5: SYSTEM BACKUP & DISASTER RECOVERY (MIGRATING TO ANOTHER PC)
+-------------------------------------------------------------------------------
+You can back up the entire system state (enrolled students, 20-frame face crops,
+SFace deep embeddings, attendance logs, and security alert snapshots) at any time:
+
+Method A — Web Admin Interface:
+  1. Log into the Administrator Dashboard (http://localhost:5000/admin).
+  2. Click the Administrator profile at the top right (or sidebar) and select
+     "Backup & Restore".
+  3. Click "Download Current System (.zip)" to download a portable backup archive.
+  4. On the new PC, go to the same page, upload the .zip, and click "Restore".
+
+Method B — Standalone Windows Tool (smart_entry_backup.bat):
+  1. Double-click "smart_entry_backup.bat" in the project folder or on Desktop.
+  2. Select Option [1] to create a timestamped backup archive.
+  3. Copy the backup .zip to a flash drive or the new PC.
+  4. On the new PC, run "smart_entry_backup.bat" and choose Option [2] to restore!
+  (Note: The system automatically generates a pre-restore safety snapshot before
+  overwriting files, guaranteeing zero data loss.)
+
+-------------------------------------------------------------------------------
+DEFAULT ACCESS URLS & CREDENTIALS:
+-------------------------------------------------------------------------------
+• Smart Entry Kiosk:  http://localhost:5000/kiosk
+• Admin Dashboard:    http://localhost:5000/admin
+• Default Username:   admin
+• Default Password:   smart_entry_2026
+
+(Note: All student profiles, facial embeddings, and database logs are stored
+locally in SQLite and the models folder, so they persist across machines.)
+===============================================================================

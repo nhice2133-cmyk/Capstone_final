@@ -1,0 +1,264 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Attendance — CSUCC Athenaeum SMART ENTRY{% endblock %}
+{% block page_title %}Athenaeum Attendance Records{% endblock %}
+
+{% block admin_content %}
+<!-- Filter bar -->
+<div class="card filter-card">
+  <form method="GET" action="{{ url_for('attendance.attendance_page') }}" class="filter-form" id="attendanceFilterForm">
+    <div class="filter-row">
+      <div class="form-group form-group-date">
+        <label>From Date</label>
+        <input type="date" name="date_from" id="filterDateFrom" value="{{ filters.date_from }}" />
+      </div>
+      <div class="form-group form-group-date">
+        <label>To Date</label>
+        <input type="date" name="date_to" id="filterDateTo" value="{{ filters.date_to }}" />
+      </div>
+      <div class="form-group form-group-program">
+        <label>Program</label>
+        <select name="program" id="filterProgram">
+          <option value="">All Programs</option>
+          {% for p in programs %}
+            <option {% if filters.program == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group form-group-purpose">
+        <label>Visit Purpose</label>
+        <select name="purpose" id="filterPurpose">
+          <option value="">All Visit Purposes</option>
+          {% for p in purposes %}
+            <option {% if filters.purpose == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group form-group-search">
+        <label>Search Identity</label>
+        <input type="text" name="search" id="filterSearch" value="{{ filters.search }}" placeholder="Search name or ID…" autocomplete="off" />
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-sm btn-primary" id="filterSubmitBtn">🔍 Filter</button>
+        <button type="button" class="btn btn-sm btn-ghost" id="filterClearBtn" title="Reset all filters">Clear</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Export button & counter toolbar -->
+<div class="toolbar my-2">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span class="text-muted"><strong id="recordCount" style="color: var(--csu-gold-400);">{{ logs | length }}</strong> record(s) indexed</span>
+    <span class="live-badge" id="liveFilterBadge" style="display: none;">
+      <span class="live-badge-dot"></span> Realtime Filtered
+    </span>
+  </div>
+  <a href="{{ url_for('attendance.export_csv', **filters) }}" class="btn btn-sm btn-gold" id="exportCsvBtn">
+    📥 Export Athenaeum CSV
+  </a>
+</div>
+
+
+<!-- Table -->
+<div class="card mt-2">
+  <div class="card-body p-0">
+    <table class="table" id="attendanceTable">
+      <thead>
+        <tr>
+          <th>#</th><th>Full Name</th><th>Student ID</th><th>Program</th>
+          <th>Date</th><th>Time In</th><th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody id="attendanceTbody">
+        {% for log in logs %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><strong>{{ log.full_name }}</strong></td>
+          <td><code>{{ log.student_id }}</code></td>
+          <td><span class="badge badge-info">{{ log.program }}</span></td>
+          <td>{{ log.date }}</td>
+          <td>{{ log.time_in }}</td>
+          <td>
+            {% if log.visit_purpose %}
+              <span class="badge badge-purpose">{{ log.visit_purpose }}</span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted" style="padding: 2.5rem 1rem;">No records found for the selected filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("attendanceFilterForm");
+  const dateFrom = document.getElementById("filterDateFrom");
+  const dateTo = document.getElementById("filterDateTo");
+  const program = document.getElementById("filterProgram");
+  const purpose = document.getElementById("filterPurpose");
+  const search = document.getElementById("filterSearch");
+  const clearBtn = document.getElementById("filterClearBtn");
+  const exportBtn = document.getElementById("exportCsvBtn");
+  const recordCount = document.getElementById("recordCount");
+  const liveBadge = document.getElementById("liveFilterBadge");
+  const table = document.getElementById("attendanceTable");
+  const tbody = document.getElementById("attendanceTbody");
+
+  let debounceTimer = null;
+  let currentRequestId = 0;
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function hasActiveFilters() {
+    return Boolean(
+      (dateFrom.value && dateFrom.value.trim()) ||
+      (dateTo.value && dateTo.value.trim()) ||
+      (program.value && program.value.trim()) ||
+      (purpose.value && purpose.value.trim()) ||
+      (search.value && search.value.trim())
+    );
+  }
+
+  function updateActiveFilterIndicators() {
+    const active = hasActiveFilters();
+    if (active) {
+      clearBtn.classList.add("active-filter");
+      liveBadge.style.display = "inline-flex";
+    } else {
+      clearBtn.classList.remove("active-filter");
+      liveBadge.style.display = "none";
+    }
+  }
+
+  async function fetchRealtimeLogs() {
+    const requestId = ++currentRequestId;
+    updateActiveFilterIndicators();
+
+    const params = new URLSearchParams();
+    params.set("ajax", "1");
+    if (dateFrom.value.trim()) params.set("date_from", dateFrom.value.trim());
+    if (dateTo.value.trim()) params.set("date_to", dateTo.value.trim());
+    if (program.value.trim()) params.set("program", program.value.trim());
+    if (purpose.value.trim()) params.set("purpose", purpose.value.trim());
+    if (search.value.trim()) params.set("search", search.value.trim());
+
+    // Update browser URL without reloading
+    const cleanParams = new URLSearchParams(params);
+    cleanParams.delete("ajax");
+    const newUrl = cleanParams.toString()
+      ? `${window.location.pathname}?${cleanParams.toString()}`
+      : window.location.pathname;
+    window.history.replaceState({}, "", newUrl);
+
+    // Subtle table opacity transition
+    table.classList.add("table-updating");
+
+    try {
+      const response = await fetch(`/admin/attendance?${params.toString()}`, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) throw new Error("HTTP error " + response.status);
+      const data = await response.json();
+
+      // Ignore stale responses if a newer keystroke fired
+      if (requestId !== currentRequestId) return;
+
+      // Update counter
+      recordCount.textContent = data.count;
+
+      // Update CSV export link
+      if (data.export_url) {
+        exportBtn.href = data.export_url;
+      }
+
+      // Render records
+      if (!data.logs || data.logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 2.5rem 1rem;">No records found for the selected filters.</td></tr>`;
+      } else {
+        const rowsHtml = data.logs.map((log, idx) => {
+          const purposeHtml = log.visit_purpose
+            ? `<span class="badge badge-purpose">${escapeHtml(log.visit_purpose)}</span>`
+            : "—";
+
+          return `<tr>
+            <td>${idx + 1}</td>
+            <td><strong>${escapeHtml(log.full_name)}</strong></td>
+            <td><code>${escapeHtml(log.student_id)}</code></td>
+            <td><span class="badge badge-info">${escapeHtml(log.program)}</span></td>
+            <td>${escapeHtml(log.date)}</td>
+            <td>${escapeHtml(log.time_in)}</td>
+            <td>${purposeHtml}</td>
+          </tr>`;
+        }).join("");
+
+        tbody.innerHTML = rowsHtml;
+      }
+    } catch (err) {
+      console.warn("Realtime filter fetch error:", err);
+    } finally {
+      table.classList.remove("table-updating");
+    }
+  }
+
+  // Real-time debounced listeners for search input
+  search.addEventListener("input", function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(fetchRealtimeLogs, 220);
+  });
+
+  // Instant trigger on dropdowns and dates
+  program.addEventListener("change", function () {
+    clearTimeout(debounceTimer);
+    fetchRealtimeLogs();
+  });
+
+  purpose.addEventListener("change", function () {
+    clearTimeout(debounceTimer);
+    fetchRealtimeLogs();
+  });
+
+  dateFrom.addEventListener("change", function () {
+    clearTimeout(debounceTimer);
+    fetchRealtimeLogs();
+  });
+
+  dateTo.addEventListener("change", function () {
+    clearTimeout(debounceTimer);
+    fetchRealtimeLogs();
+  });
+
+  // Form submit (Enter key in search or manual Filter button click)
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    fetchRealtimeLogs();
+  });
+
+  // Clear button resets inputs and updates immediately
+  clearBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    dateFrom.value = "";
+    dateTo.value = "";
+    program.value = "";
+    purpose.value = "";
+    search.value = "";
+    fetchRealtimeLogs();
+  });
+
+  // Initialize active filter status on first load
+  updateActiveFilterIndicators();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,438 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Analytics &amp; Trends — CSU Athenaeum SMART ENTRY{% endblock %}
+{% block page_title %}Athenaeum Analytics &amp; Trends{% endblock %}
+
+{% block admin_content %}
+<!-- Compact Sticky Control Toolbar -->
+<div class="card filter-card" style="margin-bottom: 0.85rem;">
+  <div class="analytics-toolbar-compact">
+    <!-- Quick Range Presets on Left -->
+    <div class="analytics-presets-group">
+      <span style="font-size: 0.68rem; font-weight: 700; color: var(--csu-gold-400); padding: 0 4px; text-transform: uppercase;">Range:</span>
+      <button type="button" class="preset-pill" onclick="setPreset(1, this)">Today</button>
+      <button type="button" class="preset-pill active" onclick="setPreset(7, this)">Last 7 Days</button>
+      <button type="button" class="preset-pill" onclick="setPreset(30, this)">Last 30 Days</button>
+      <button type="button" class="preset-pill" onclick="setPreset('month', this)">This Month</button>
+    </div>
+
+    <!-- Date Pickers & Actions on Right -->
+    <div class="analytics-date-group">
+      <div class="form-group form-group-date" style="margin: 0; min-width: 120px;">
+        <label style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--csu-gold-400); margin-bottom: 1px;">From</label>
+        <input type="date" id="analyticFrom" value="{{ week_ago }}" onchange="clearPresetActive()" style="height: 32px; padding: 2px 8px; font-size: 0.8rem;" />
+      </div>
+      <div class="form-group form-group-date" style="margin: 0; min-width: 120px;">
+        <label style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--csu-gold-400); margin-bottom: 1px;">To</label>
+        <input type="date" id="analyticTo" value="{{ today }}" onchange="clearPresetActive()" style="height: 32px; padding: 2px 8px; font-size: 0.8rem;" />
+      </div>
+      <div style="display: flex; gap: 6px; align-self: flex-end;">
+        <button class="btn btn-sm btn-primary" id="btnUpdateCharts" onclick="refreshCharts()" style="padding: 6px 12px; font-size: 0.82rem; height: 32px;" title="Reload Analytics">
+          <span id="btnUpdateIcon">🔄</span> Update
+        </button>
+        <button class="btn btn-sm btn-gold" onclick="exportReport()" style="padding: 6px 12px; font-size: 0.82rem; height: 32px;" title="Download CSV Report">
+          📥 Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Compact High-Density KPI Strip -->
+<div class="analytics-kpi-grid" id="summaryStats">
+  <div class="kpi-card-compact">
+    <div class="kpi-icon-badge green">📊</div>
+    <div class="kpi-details">
+      <div class="kpi-value-compact" id="summaryTotal">—</div>
+      <div class="kpi-label-compact">Total Visits (Period)</div>
+    </div>
+  </div>
+  <div class="kpi-card-compact">
+    <div class="kpi-icon-badge blue">📅</div>
+    <div class="kpi-details">
+      <div class="kpi-value-compact" id="summaryAvg">—</div>
+      <div class="kpi-label-compact">Daily Average</div>
+    </div>
+  </div>
+  <div class="kpi-card-compact gold-accent">
+    <div class="kpi-icon-badge gold">🏆</div>
+    <div class="kpi-details">
+      <div class="kpi-value-compact" id="summaryTopDept" style="color: #fbbf24;">—</div>
+      <div class="kpi-label-compact" id="summaryTopDeptLabel">Highest Visiting Department</div>
+    </div>
+  </div>
+  <div class="kpi-card-compact">
+    <div class="kpi-icon-badge purple">🏛️</div>
+    <div class="kpi-details">
+      <div class="kpi-value-compact" id="summaryTopDeptVisits">—</div>
+      <div class="kpi-label-compact" id="summaryTopDeptShare">Top Department Share</div>
+    </div>
+  </div>
+</div>
+
+<!-- Compact 2x2 Balanced Charts Grid -->
+<div class="charts-grid-compact">
+  <!-- Chart 1: Daily Attendance Trend -->
+  <div class="chart-card-compact">
+    <div class="chart-header-compact">
+      <div class="chart-title-compact">
+        <span>📅</span> Daily Attendance Trend
+      </div>
+      <span class="chart-badge-compact green" id="dailyTotalBadge">7-Day Trend</span>
+    </div>
+    <div class="chart-canvas-box">
+      <canvas id="dailyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Department Breakdown Ranking -->
+  <div class="chart-card-compact">
+    <div class="chart-header-compact">
+      <div class="chart-title-compact">
+        <span>🏛️</span> College &amp; Department Ranking
+      </div>
+      <div id="highestDeptBadge" class="chart-badge-compact gold">
+        🏆 Calculating…
+      </div>
+    </div>
+    <div class="chart-canvas-box">
+      <canvas id="departmentChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 3: Hourly Traffic Distribution -->
+  <div class="chart-card-compact">
+    <div class="chart-header-compact">
+      <div class="chart-title-compact">
+        <span>🕐</span> Hourly Traffic Distribution (Today)
+      </div>
+      <span class="chart-badge-compact gold" id="hourlyPeakBadge">Peak: Calculating…</span>
+    </div>
+    <div class="chart-canvas-box">
+      <canvas id="hourlyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 4: Visit Purpose Breakdown -->
+  <div class="chart-card-compact">
+    <div class="chart-header-compact">
+      <div class="chart-title-compact">
+        <span>🎯</span> Visit Purpose Distribution
+      </div>
+      <span class="chart-badge-compact blue" id="purposeTotalBadge">All Categories</span>
+    </div>
+    <div class="chart-canvas-box">
+      <canvas id="purposeChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script>
+  let dailyChart = null;
+  let departmentChart = null;
+  let hourlyChart = null;
+  let purposeChart = null;
+
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: "#cbd5e1",
+          font: { family: "Outfit, Inter, sans-serif", size: 11, weight: 600 },
+          boxWidth: 12,
+          padding: 8
+        }
+      },
+      tooltip: {
+        backgroundColor: "rgba(6, 21, 14, 0.95)",
+        titleColor: "#fbbf24",
+        bodyColor: "#f1f5f9",
+        borderColor: "rgba(52, 211, 153, 0.35)",
+        borderWidth: 1,
+        padding: 10,
+        boxPadding: 4,
+        cornerRadius: 8,
+        titleFont: { family: "Outfit, sans-serif", weight: 700 }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: "#84a193", font: { size: 10.5 } },
+        grid: { color: "rgba(255, 255, 255, 0.04)" }
+      },
+      y: {
+        ticks: { color: "#84a193", font: { size: 10.5 }, precision: 0 },
+        grid: { color: "rgba(255, 255, 255, 0.04)" },
+        beginAtZero: true
+      }
+    }
+  };
+
+  function clearPresetActive() {
+    document.querySelectorAll(".preset-pill").forEach(p => p.classList.remove("active"));
+  }
+
+  function setPreset(days, elem) {
+    clearPresetActive();
+    if (elem) elem.classList.add("active");
+
+    const today = new Date();
+    const toStr = today.toISOString().split("T")[0];
+    let fromDate = new Date();
+
+    if (days === 1) {
+      fromDate = today;
+    } else if (days === "month") {
+      fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else {
+      fromDate.setDate(today.getDate() - (days - 1));
+    }
+
+    const fromStr = fromDate.toISOString().split("T")[0];
+    document.getElementById("analyticFrom").value = fromStr;
+    document.getElementById("analyticTo").value = toStr;
+
+    refreshCharts();
+  }
+
+  function getDaysBetween(fromStr, toStr) {
+    try {
+      const d1 = new Date(fromStr);
+      const d2 = new Date(toStr);
+      const diff = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+      return Math.max(1, Math.min(diff, 90));
+    } catch {
+      return 7;
+    }
+  }
+
+  async function initCharts() {
+    const btnIcon = document.getElementById("btnUpdateIcon");
+    if (btnIcon) btnIcon.style.animation = "retrainSpin 0.8s linear infinite";
+
+    const fromVal = document.getElementById("analyticFrom").value;
+    const toVal   = document.getElementById("analyticTo").value;
+    const numDays = getDaysBetween(fromVal, toVal);
+
+    try {
+      const [dailyRes, deptRes, hourlyRes, purposeRes] = await Promise.all([
+        fetch(`/admin/analytics/daily?days=${numDays}`),
+        fetch(`/admin/analytics/department?date_from=${fromVal}&date_to=${toVal}`),
+        fetch(`/admin/analytics/hourly`),
+        fetch(`/admin/analytics/purpose?date_from=${fromVal}&date_to=${toVal}`)
+      ]);
+
+      const [dailyData, deptData, hourlyData, purposeData] = await Promise.all([
+        dailyRes.json(),
+        deptRes.json(),
+        hourlyRes.json(),
+        purposeRes.json()
+      ]);
+
+      // ── 1. Daily Chart ──────────────────────────────────────
+      const totalVisits = dailyData.data.reduce((a, b) => a + b, 0);
+      const dailyAvg = (totalVisits / Math.max(dailyData.data.length, 1)).toFixed(1);
+
+      document.getElementById("summaryTotal").textContent = totalVisits;
+      document.getElementById("summaryAvg").textContent = dailyAvg;
+
+      const dailyBadge = document.getElementById("dailyTotalBadge");
+      if (dailyBadge) {
+        dailyBadge.textContent = `${totalVisits} Visits (${dailyData.data.length} Days)`;
+      }
+
+      // Compact date label formatting (MM/DD)
+      const compactLabels = dailyData.labels.map(l => {
+        const parts = l.split("-");
+        return parts.length === 3 ? `${parts[1]}/${parts[2]}` : l;
+      });
+
+      const dailyCtx = document.getElementById("dailyChart").getContext("2d");
+      dailyChart = new Chart(dailyCtx, {
+        type: "bar",
+        data: {
+          labels: compactLabels,
+          datasets: [{
+            label: "Athenaeum Visitors",
+            data: dailyData.data,
+            backgroundColor: "rgba(16, 185, 129, 0.75)",
+            hoverBackgroundColor: "#10b981",
+            borderColor: "#34d399",
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            ...chartDefaults.plugins,
+            legend: { display: false }
+          }
+        }
+      });
+
+      // ── 2. Department Breakdown ─────────────────────────────
+      if (deptData.highest) {
+        document.getElementById("summaryTopDept").textContent = deptData.highest.department;
+        document.getElementById("summaryTopDeptLabel").textContent = `Highest: ${deptData.highest.percentage}% of visits`;
+        document.getElementById("summaryTopDeptVisits").textContent = `${deptData.highest.count} Visits`;
+        document.getElementById("summaryTopDeptShare").textContent = `${deptData.highest.percentage}% of ${deptData.highest.total_visits} Total Visits`;
+        document.getElementById("highestDeptBadge").innerHTML = `🏆 Top: <strong>${deptData.highest.department}</strong> (${deptData.highest.percentage}%)`;
+      } else {
+        document.getElementById("summaryTopDept").textContent = "None Yet";
+        document.getElementById("summaryTopDeptLabel").textContent = "Highest Department";
+        document.getElementById("summaryTopDeptVisits").textContent = "0 Visits";
+        document.getElementById("summaryTopDeptShare").textContent = "No visits logged in period";
+        document.getElementById("highestDeptBadge").textContent = "No Data";
+      }
+
+      const bgColors = deptData.labels.map((_, idx) => idx === 0 ? "rgba(245, 158, 11, 0.85)" : "rgba(16, 185, 129, 0.75)");
+      const borderColors = deptData.labels.map((_, idx) => idx === 0 ? "#fbbf24" : "#10b981");
+
+      const deptCtx = document.getElementById("departmentChart").getContext("2d");
+      departmentChart = new Chart(deptCtx, {
+        type: "bar",
+        data: {
+          labels: deptData.labels.length ? deptData.labels : ["No records"],
+          datasets: [{
+            label: "Visits",
+            data: deptData.data.length ? deptData.data : [0],
+            backgroundColor: bgColors.length ? bgColors : ["rgba(16, 185, 129, 0.75)"],
+            borderColor: borderColors.length ? borderColors : ["#10b981"],
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            ...chartDefaults.plugins,
+            legend: { display: false },
+            tooltip: {
+              ...chartDefaults.plugins.tooltip,
+              callbacks: {
+                label: function (ctx) {
+                  const val = ctx.raw || 0;
+                  const total = deptData.highest ? deptData.highest.total_visits : val;
+                  const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                  return `${val} Visits (${pct}%)${ctx.dataIndex === 0 ? ' — 🏆 Top Program' : ''}`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // ── 3. Hourly Traffic ───────────────────────────────────
+      let maxHour = -1;
+      let maxCount = -1;
+      hourlyData.data.forEach((cnt, idx) => {
+        if (cnt > maxCount) {
+          maxCount = cnt;
+          maxHour = idx;
+        }
+      });
+
+      const peakBadge = document.getElementById("hourlyPeakBadge");
+      if (peakBadge) {
+        if (maxCount > 0) {
+          const period = maxHour >= 12 ? "PM" : "AM";
+          const h12 = maxHour % 12 === 0 ? 12 : maxHour % 12;
+          peakBadge.textContent = `Peak: ${h12} ${period} (${maxCount} visitors)`;
+        } else {
+          peakBadge.textContent = "Peak: None logged";
+        }
+      }
+
+      // Compact hourly labels: 6 AM to 8 PM display window
+      const hourlyCtx = document.getElementById("hourlyChart").getContext("2d");
+      hourlyChart = new Chart(hourlyCtx, {
+        type: "line",
+        data: {
+          labels: hourlyData.labels,
+          datasets: [{
+            label: "Visitors / Hour",
+            data: hourlyData.data,
+            borderColor: "#f59e0b",
+            backgroundColor: "rgba(245, 158, 11, 0.12)",
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            pointBackgroundColor: "#fbbf24"
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            ...chartDefaults.plugins,
+            legend: { display: false }
+          }
+        }
+      });
+
+      // ── 4. Purpose Breakdown ────────────────────────────────
+      const totalPurpose = purposeData.data.reduce((a, b) => a + b, 0);
+      const purposeBadge = document.getElementById("purposeTotalBadge");
+      if (purposeBadge) {
+        purposeBadge.textContent = `${totalPurpose} Logged`;
+      }
+
+      const purposePalette = ["#10b981", "#f59e0b", "#06b6d4", "#a855f7", "#ec4899", "#84cc16"];
+      const purposeCtx = document.getElementById("purposeChart").getContext("2d");
+      purposeChart = new Chart(purposeCtx, {
+        type: "doughnut",
+        data: {
+          labels: purposeData.labels.length ? purposeData.labels : ["No visits"],
+          datasets: [{
+            data: purposeData.data.length ? purposeData.data : [1],
+            backgroundColor: purposeData.labels.length ? purposePalette.slice(0, purposeData.labels.length) : ["rgba(255,255,255,0.1)"],
+            borderColor: "#05140c",
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "60%",
+          plugins: {
+            legend: {
+              position: "right",
+              labels: {
+                color: "#cbd5e1",
+                font: { family: "Outfit, Inter, sans-serif", size: 10.5 },
+                boxWidth: 10,
+                padding: 6
+              }
+            },
+            tooltip: chartDefaults.plugins.tooltip
+          }
+        }
+      });
+
+    } catch (err) {
+      console.error("Error loading analytics:", err);
+    } finally {
+      if (btnIcon) btnIcon.style.animation = "";
+    }
+  }
+
+  async function refreshCharts() {
+    [dailyChart, departmentChart, hourlyChart, purposeChart].forEach(c => {
+      if (c) c.destroy();
+    });
+    await initCharts();
+  }
+
+  function exportReport() {
+    const from = document.getElementById("analyticFrom").value;
+    const to   = document.getElementById("analyticTo").value;
+    window.location.href = `/admin/attendance/export?date_from=${from}&date_to=${to}`;
+  }
+
+  document.addEventListener("DOMContentLoaded", initCharts);
+</script>
+{% endblock %}

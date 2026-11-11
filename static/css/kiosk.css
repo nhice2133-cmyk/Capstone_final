@@ -1,0 +1,562 @@
+/* ═══════════════════════════════════════════════════════════════
+   SMART ENTRY — CSUCC Athenaeum Kiosk Full-Screen UI
+   Caraga State University • Cabadbaran Campus
+   ═══════════════════════════════════════════════════════════════ */
+@import url('fonts.css');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+.hidden { display: none !important; }
+
+:root {
+  --csu-green-950: #020b06;
+  --csu-green-900: #05140c;
+  --csu-green-850: #081e13;
+  --csu-green-800: #0d2b1c;
+  --csu-green-700: #123d27;
+  --csu-green-600: #175437;
+  --csu-green-500: #107c41;
+  --csu-green-400: #10b981;
+  --csu-green-300: #34d399;
+  --csu-green-200: #6ee7b7;
+
+  --csu-gold-500: #f59e0b;
+  --csu-gold-400: #fbbf24;
+  --csu-gold-300: #fde047;
+  --csu-gold-600: #d97706;
+
+  --kiosk-bg:      var(--csu-green-950);
+  --kiosk-surface: rgba(7, 23, 15, 0.85);
+  --kiosk-card:    rgba(10, 32, 21, 0.9);
+
+  --accent-cyan:   #38bdf8;
+  --accent-green:  var(--csu-green-400);
+  --accent-gold:   var(--csu-gold-400);
+  --accent-red:    #f87171;
+
+  --text-primary:   #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted:     #84a193;
+
+  --border:        rgba(52, 211, 153, 0.16);
+  --border-gold:   rgba(245, 158, 11, 0.35);
+
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+}
+
+body.kiosk-body {
+  font-family: var(--font-display);
+  background: var(--kiosk-bg);
+  color: var(--text-primary);
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  position: relative;
+  user-select: none;
+}
+
+/* ── Background Institutional Art ───────────────────────────── */
+.kiosk-bg-art {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.bg-banner-overlay {
+  position: absolute; inset: 0;
+  background-image: url('/static/images/Athenaeum.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.15;
+  filter: saturate(1.4) contrast(1.1);
+  transform: scale(1.05);
+  transition: background-image 1.2s ease-in-out;
+  animation: bgZoom 40s alternate infinite ease-in-out;
+}
+@keyframes bgZoom {
+  0% { transform: scale(1.02); }
+  100% { transform: scale(1.08); }
+}
+
+.bg-seal-watermark {
+  position: absolute;
+  right: -80px; bottom: -80px;
+  width: 500px; height: 500px;
+  background-image: url('/static/images/csu_seal.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+/* ── Animated Atmospheric Orbs ──────────────────────────────── */
+.bg-particles { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.particle {
+  position: absolute; border-radius: 50%;
+  animation: driftParticle 20s infinite ease-in-out;
+}
+.particle-green {
+  width: 650px; height: 650px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.09), transparent 70%);
+  top: -200px; left: -150px; animation-duration: 22s;
+}
+.particle-gold {
+  width: 550px; height: 550px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.08), transparent 70%);
+  bottom: -150px; right: -100px; animation-delay: -7s; animation-duration: 25s;
+}
+.particle-emerald {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.06), transparent 70%);
+  top: 35%; left: 35%; animation-delay: -12s;
+}
+.particle-amber {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.05), transparent 70%);
+  top: 15%; right: 25%; animation-delay: -4s;
+}
+
+@keyframes driftParticle {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(35px, -25px) scale(1.06); }
+  66%  { transform: translate(-25px, 30px) scale(0.95); }
+}
+
+/* ── CSUCC Athenaeum Header ─────────────────────────────────── */
+.kiosk-header {
+  position: relative; z-index: 10;
+  height: 78px; padding: 0 2.2rem;
+  background: rgba(4, 15, 9, 0.92);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+
+.csucc-logo-wrap {
+  width: 54px; height: 54px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(16, 185, 129, 0.25));
+  padding: 3px;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 10px rgba(245, 158, 11, 0.2);
+  display: flex; align-items: center; justify-content: center;
+}
+.csu-seal-img {
+  width: 100%; height: 100%; object-fit: contain; border-radius: 8px;
+}
+
+.header-brand { display: flex; flex-direction: column; }
+.brand-eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.68rem; font-weight: 700;
+  color: var(--csu-gold-400); letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.brand-title {
+  font-size: 1.35rem; font-weight: 900;
+  letter-spacing: 0.06em; color: #fff;
+  line-height: 1.15;
+  background: linear-gradient(90deg, #ffffff 40%, var(--csu-gold-300) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-center { display: flex; align-items: center; }
+.system-pill {
+  font-family: var(--font-body);
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--csu-green-300);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  padding: 5px 14px; border-radius: 999px;
+}
+
+.header-right { display: flex; align-items: center; gap: 1.4rem; }
+.clock-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.clock-label { font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.12em; font-weight: 700; }
+.clock {
+  font-size: 1.35rem; font-weight: 800;
+  color: var(--csu-gold-400); letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+}
+
+.mode-badge {
+  padding: 7px 18px; border-radius: 999px;
+  font-size: 0.76rem; font-weight: 800; letter-spacing: 0.08em;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.mode-badge.entry {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35));
+  border: 1.5px solid var(--csu-green-400);
+  color: #a7f3d0;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+}
+.mode-badge.exit {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35));
+  border: 1.5px solid var(--csu-gold-400);
+  color: #fef08a;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+/* ── Main Layout ────────────────────────────────────────────── */
+.kiosk-main {
+  position: relative; z-index: 5;
+  flex: 1; display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 2rem; padding: 2rem;
+  overflow: hidden;
+}
+
+/* ── Camera Panel with Security HUD ─────────────────────────── */
+.camera-panel {
+  background: #000;
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 0 40px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.8);
+}
+
+#webcamVideo {
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scaleX(-1);
+  background: #000;
+}
+
+#faceBoxCanvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* HUD Overlay Elements */
+.hud-top-bar {
+  position: absolute; top: 16px; left: 18px; right: 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 8; pointer-events: none;
+}
+.hud-live-tag {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(3, 15, 8, 0.75);
+  backdrop-filter: blur(8px);
+  padding: 5px 12px; border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
+  color: var(--csu-green-300);
+}
+.hud-pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 10px #ef4444;
+  animation: pulseLive 1.2s infinite ease-in-out;
+}
+@keyframes pulseLive {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.4; }
+}
+
+.hud-facility-tag {
+  background: rgba(3, 15, 8, 0.75);
+  backdrop-filter: blur(8px);
+  padding: 5px 12px; border-radius: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
+  color: var(--csu-gold-300);
+}
+.exit-mode .hud-facility-tag {
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fef08a;
+  background: rgba(24, 16, 4, 0.85);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+.hud-bottom-bar {
+  position: absolute; bottom: 16px; left: 18px; right: 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 8; pointer-events: none;
+  font-family: var(--font-body);
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Corner HUD Brackets */
+.hud-bracket {
+  position: absolute; width: 24px; height: 24px;
+  pointer-events: none; z-index: 8;
+  border-color: var(--csu-gold-400);
+  opacity: 0.85;
+}
+.hud-bracket.top-left { top: 12px; left: 12px; border-top: 3px solid; border-left: 3px solid; }
+.hud-bracket.top-right { top: 12px; right: 12px; border-top: 3px solid; border-right: 3px solid; }
+.hud-bracket.bottom-left { bottom: 12px; left: 12px; border-bottom: 3px solid; border-left: 3px solid; }
+.hud-bracket.bottom-right { bottom: 12px; right: 12px; border-bottom: 3px solid; border-right: 3px solid; }
+
+/* ── Info Panel ─────────────────────────────────────────────── */
+.info-panel {
+  background: var(--kiosk-surface);
+  backdrop-filter: blur(28px);
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  padding: 2.2rem;
+  display: flex; flex-direction: column; justify-content: center;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(16, 185, 129, 0.05);
+  position: relative;
+}
+.info-panel::before {
+  content: ""; position: absolute; top: 0; left: 15%; right: 15%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--csu-gold-400), var(--csu-green-400), transparent);
+}
+
+.info-state { display: flex; flex-direction: column; gap: 1.4rem; }
+
+/* Athenaeum Feature Card (in default state) */
+.athenaeum-showcase-card {
+  position: relative;
+  border-radius: 16px; overflow: hidden;
+  border: 1px solid var(--border-gold);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  height: 180px;
+}
+.athenaeum-hero-img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.athenaeum-showcase-card:hover .athenaeum-hero-img {
+  transform: scale(1.04);
+}
+.showcase-badge {
+  position: absolute; bottom: 10px; left: 12px; right: 12px;
+  background: rgba(4, 18, 10, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: 8px;
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em;
+  color: var(--csu-gold-300); text-align: center;
+}
+
+.welcome-header { text-align: center; }
+.info-heading {
+  font-size: 1.7rem; font-weight: 900; line-height: 1.2;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, #ffffff 40%, var(--csu-gold-300) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.info-subheading {
+  font-family: var(--font-body);
+  font-size: 0.82rem; font-weight: 600;
+  color: var(--csu-green-300); letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+.info-body {
+  font-family: var(--font-body);
+  color: var(--text-secondary); line-height: 1.75;
+  text-align: center; font-size: 0.95rem;
+}
+.info-body strong { color: var(--csu-gold-400); }
+
+/* State Icons / Badges */
+.state-icon-badge {
+  width: 72px; height: 72px; border-radius: 50%;
+  margin: 0 auto; display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem;
+}
+.success-halo {
+  background: rgba(16, 185, 129, 0.2);
+  border: 2px solid var(--csu-green-400);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+  animation: popIn 0.4s ease;
+}
+.gold-halo {
+  background: rgba(245, 158, 11, 0.2);
+  border: 2px solid var(--csu-gold-400);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
+  animation: popIn 0.4s ease;
+}
+.amber-halo {
+  background: rgba(245, 158, 11, 0.25);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.55);
+  animation: popIn 0.4s ease;
+}
+.not-entered-callout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1.5px solid rgba(245, 158, 11, 0.45);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin: 14px 0;
+  text-align: left;
+}
+.not-entered-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+.not-entered-text {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: #fef08a;
+  line-height: 1.55;
+}
+.green-halo {
+  background: rgba(5, 150, 105, 0.25);
+  border: 2px solid #34d399;
+  box-shadow: 0 0 30px rgba(52, 211, 153, 0.4);
+  animation: popIn 0.4s ease;
+}
+.red-halo {
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+}
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  75%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Status Dot with Radar Pulse */
+.status-dot {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  font-family: var(--font-body);
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--csu-gold-300);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 8px 16px; border-radius: 999px;
+  width: fit-content; margin: 0 auto;
+}
+.dot-pulse {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--csu-green-400);
+  box-shadow: 0 0 12px var(--csu-green-400);
+  animation: dotPulse 1.4s infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.6); opacity: 0.4; }
+}
+
+/* Student ID Pass Card */
+.student-card {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.14), rgba(5, 40, 25, 0.85));
+  border: 1.5px solid var(--border-gold);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.card-institution-strip {
+  background: linear-gradient(90deg, #107c41, #f59e0b);
+  padding: 5px 14px;
+  font-family: var(--font-body);
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em;
+  color: #fff; text-align: center;
+}
+.student-card-inner {
+  padding: 1.25rem;
+  display: flex; align-items: center; gap: 1.2rem;
+}
+.student-card.compact {
+  padding: 1rem 1.25rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--border);
+}
+.student-avatar {
+  font-size: 3.2rem;
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid var(--csu-gold-400);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.student-name {
+  font-size: 1.35rem; font-weight: 800;
+  color: #fff; line-height: 1.2;
+}
+.student-id {
+  font-family: monospace;
+  font-size: 0.85rem; font-weight: 700;
+  color: var(--csu-gold-300); letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+.student-prog {
+  font-family: var(--font-body);
+  font-size: 0.82rem; font-weight: 600;
+  color: var(--csu-green-300);
+  margin-top: 3px;
+}
+
+/* Purpose Selection UI */
+.purpose-selection-box { display: flex; flex-direction: column; gap: 12px; }
+.purpose-label {
+  font-family: var(--font-body);
+  font-size: 0.78rem; font-weight: 800;
+  letter-spacing: 0.14em; color: var(--csu-gold-400);
+  text-transform: uppercase; text-align: center;
+}
+.purpose-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.purpose-btn {
+  padding: 16px 14px; border-radius: 16px;
+  background: rgba(10, 35, 22, 0.7);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+}
+.purpose-icon { font-size: 1.8rem; }
+.purpose-text {
+  font-family: var(--font-display);
+  font-size: 0.95rem; font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.purpose-btn:hover {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.4));
+  border-color: var(--csu-green-400);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+  color: #fff;
+}
+.purpose-btn:active { transform: translateY(0); }
+.purpose-btn.selected {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(16, 185, 129, 0.35));
+  border-color: var(--csu-gold-400);
+  color: #fff;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+}
+
+/* Confirmed Purpose Badge */
+.confirmed-purpose {
+  text-align: center; font-size: 1.05rem;
+  color: var(--csu-gold-300);
+  background: rgba(245, 158, 11, 0.14);
+  border: 1.5px solid var(--csu-gold-400);
+  padding: 10px 24px; border-radius: 999px;
+  font-weight: 800; letter-spacing: 0.04em;
+  margin: 0 auto; width: fit-content;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+/* Alerts */
+.alert-heading { color: #f87171 !important; -webkit-text-fill-color: initial !important; }
+.blink { animation: blinkAlert 0.8s infinite; }
+@keyframes blinkAlert {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .kiosk-main { grid-template-columns: 1fr; }
+  .camera-panel { height: 48vh; }
+  .info-panel { border-radius: 20px; padding: 1.5rem; }
+  .athenaeum-showcase-card { height: 130px; }
+}
+
