@@ -46,6 +46,7 @@ let lastFaceBox      = null;   // current target face box {x, y, w, h}
 let animatedFaceBox  = null;   // smoothly interpolated box for drawing
 let faceBoxClearTimer = null;  // timer to clear the box if no new detections
 let faceBoxColor     = "cyan"; // "cyan" (default/recognized) or "red" (unknown)
+let faceBoxLabel     = "";     // student name label for recognized face
 let animFrameId      = null;
 
 // ── Clock ───────────────────────────────────────────────────────────────────
@@ -129,7 +130,8 @@ function handleRecognitionResult(data) {
   if (data.face_box) {
     const isRecognized = data.status === "recognized" || data.status === "already_logged" || data.status === "cooldown";
     const boxColor = isRecognized ? "cyan" : (data.status === "unknown" ? "red" : "cyan");
-    updateFaceBox(data.face_box, boxColor);
+    const label = (isRecognized && data.full_name) ? data.full_name : "";
+    updateFaceBox(data.face_box, boxColor, label);
   }
 
   if (data.status === "no_face") {
@@ -141,8 +143,6 @@ function handleRecognitionResult(data) {
 
   if (data.status === "cooldown") {
     consecutiveUnknownCount = 0;
-    consecutiveRecognizedCount = 0;
-    pendingStudentDbId = null;
     return;
   }
 
@@ -157,8 +157,16 @@ function handleRecognitionResult(data) {
   if (data.status === "recognized") {
     consecutiveUnknownCount = 0;
 
-    // Temporal consistency verification:
-    // Only confirm identity if the same student is detected across consecutive frames
+    // Fast-path: instant prompt on high confidence (>= 0.44)
+    if (data.confidence >= 0.44) {
+      consecutiveRecognizedCount = 0;
+      pendingStudentDbId = null;
+      studentDbId = data.student_db_id;
+      promptVisitPurpose(data);
+      return;
+    }
+
+    // Temporal consistency verification for moderate confidence (0.37 - 0.44):
     if (pendingStudentDbId === data.student_db_id) {
       consecutiveRecognizedCount++;
     } else {
@@ -166,22 +174,35 @@ function handleRecognitionResult(data) {
       consecutiveRecognizedCount = 1;
     }
 
+    // Update status dot with verifying status
+    const statusDot = document.getElementById("statusDot");
+    if (statusDot && data.full_name) {
+      statusDot.innerHTML = `<span class="dot-pulse"></span><span>Verifying: ${data.full_name}...</span>`;
+    }
+
     if (consecutiveRecognizedCount >= REQUIRED_RECOGNITION_CONSECUTIVE) {
       consecutiveRecognizedCount = 0;
       pendingStudentDbId = null;
       studentDbId = data.student_db_id;
-      // Prompt for visit purpose directly
       promptVisitPurpose(data);
     }
     return;
   }
 
   if (data.status === "unknown") {
-    consecutiveRecognizedCount = 0;
-    pendingStudentDbId = null;
+    // Grace period: allow 1 noisy/flickering frame without instantly wiping pending recognition
+    if (pendingStudentDbId && consecutiveRecognizedCount > 0) {
+      consecutiveRecognizedCount = Math.max(0, consecutiveRecognizedCount - 1);
+      if (consecutiveRecognizedCount === 0) {
+        pendingStudentDbId = null;
+      }
+    } else {
+      pendingStudentDbId = null;
+    }
+
     consecutiveUnknownCount++;
-    // Only lock out into full alert if persistently unknown for 3 consecutive frames (~1.2s)
-    if (consecutiveUnknownCount >= 3) {
+    // Only lock out into full alert if persistently unknown for 5 consecutive frames (~2.0s)
+    if (consecutiveUnknownCount >= 5) {
       consecutiveUnknownCount = 0;
       showAlertState();
     }
@@ -190,10 +211,11 @@ function handleRecognitionResult(data) {
 
 // ── Face Bounding Box Drawing ───────────────────────────────────────────────
 
-function updateFaceBox(box, color) {
+function updateFaceBox(box, color, label) {
   // box has normalized coords {x, y, w, h} in range [0..1]
   lastFaceBox  = box;
   faceBoxColor = color || "cyan";
+  faceBoxLabel = label || "";
 
   // Initialize animated box if this is the first detection
   if (!animatedFaceBox) {
@@ -205,6 +227,7 @@ function updateFaceBox(box, color) {
   faceBoxClearTimer = setTimeout(() => {
     lastFaceBox     = null;
     animatedFaceBox = null;
+    faceBoxLabel    = "";
     clearFaceBoxCanvas();
   }, FACE_BOX_CLEAR_MS);
 }
@@ -304,6 +327,30 @@ function startFaceBoxAnimation() {
     faceBoxCtx.arcTo(rx, ry + rh, rx, ry + rh - radius, radius);
     faceBoxCtx.lineTo(rx, ry + rh - cornerLen);
     faceBoxCtx.stroke();
+
+    // If recognized and student name is available, draw a clean Athenaeum HUD tag above the face
+    if (faceBoxLabel && !isRed) {
+      faceBoxCtx.save();
+      faceBoxCtx.font = "bold 13px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
+      const textMetrics = faceBoxCtx.measureText(faceBoxLabel);
+      const tagW = textMetrics.width + 24;
+      const tagH = 26;
+      const tagX = rx + (rw - tagW) / 2;
+      const tagY = Math.max(8, ry - tagH - 8);
+
+      faceBoxCtx.fillStyle = "rgba(16, 185, 129, 0.92)";
+      faceBoxCtx.shadowColor = "rgba(16, 185, 129, 0.6)";
+      faceBoxCtx.shadowBlur = 10;
+      drawRoundedRect(faceBoxCtx, tagX, tagY, tagW, tagH, 6);
+      faceBoxCtx.fill();
+
+      faceBoxCtx.fillStyle = "#ffffff";
+      faceBoxCtx.shadowBlur = 0;
+      faceBoxCtx.textAlign = "center";
+      faceBoxCtx.textBaseline = "middle";
+      faceBoxCtx.fillText(faceBoxLabel, tagX + tagW / 2, tagY + tagH / 2);
+      faceBoxCtx.restore();
+    }
 
     faceBoxCtx.restore();
   }
@@ -430,6 +477,14 @@ function resetToIdle() {
   currentState = "idle";
   studentDbId  = null;
   consecutiveUnknownCount = 0;
+  pendingStudentDbId = null;
+  consecutiveRecognizedCount = 0;
+  faceBoxLabel = "";
+
+  const statusDot = document.getElementById("statusDot");
+  if (statusDot) {
+    statusDot.innerHTML = '<span class="dot-pulse"></span><span>Scanning face...</span>';
+  }
 
   switchInfoState(stateDefault);
   clearFaceBoxCanvas();

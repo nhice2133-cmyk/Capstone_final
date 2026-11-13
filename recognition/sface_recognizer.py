@@ -205,10 +205,22 @@ class SFaceRecognizer:
                     student_embeddings.append(emb)
 
             if student_embeddings:
+                # Filter out outlier capture frames before computing the identity centroid
+                if len(student_embeddings) >= 5:
+                    temp_stack = np.vstack(student_embeddings)
+                    mean_raw = np.mean(temp_stack, axis=0, keepdims=True)
+                    mean_raw = mean_raw / (np.linalg.norm(mean_raw) + 1e-6)
+                    sims = [float(np.dot(e, mean_raw.T)[0][0]) for e in student_embeddings]
+                    valid_embs = [e for e, s in zip(student_embeddings, sims) if s >= 0.45]
+                    if len(valid_embs) < 3:
+                        valid_embs = student_embeddings
+                else:
+                    valid_embs = student_embeddings
+
                 self._embeddings_db[sid] = student_embeddings
                 
                 # Compute centroid embedding (mean vector normalized to unit length)
-                stacked = np.vstack(student_embeddings)
+                stacked = np.vstack(valid_embs)
                 centroid = np.mean(stacked, axis=0, keepdims=True)
                 centroid = centroid / (np.linalg.norm(centroid) + 1e-6)
                 self._centroids[sid] = centroid.astype(np.float32)
@@ -283,9 +295,16 @@ class SFaceRecognizer:
         best_score = top1["score"]
         best_sid = top1["sid"]
 
-        # Minimum margin to prevent identity confusion
-        # If the runner-up is too close, the prediction is ambiguous and rejected
-        min_margin = 0.035
+        # Adaptive margin separation: prevent confusion between distinct registered users
+        # High confidence matches (>= 0.46) need only small margin (0.015)
+        # Moderate confidence matches need standard margin (0.020 - 0.025)
+        if best_score >= 0.46:
+            min_margin = 0.015
+        elif best_score >= 0.42:
+            min_margin = 0.020
+        else:
+            min_margin = 0.025
+
         is_separated = True
         if top2 is not None:
             margin = best_score - top2["score"]
@@ -293,7 +312,7 @@ class SFaceRecognizer:
                 is_separated = False
 
         # Centroid consistency guard: identity cannot contradict the person's centroid
-        min_centroid = max(0.28, threshold - 0.08)
+        min_centroid = max(0.24, threshold - 0.10)
         centroid_ok = top1["centroid_sim"] >= min_centroid
 
         # Check threshold, margin separation, and centroid consistency

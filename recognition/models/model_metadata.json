@@ -3,7 +3,7 @@
   "version": "v20261113_125753",
   "updated_at": "2026-11-13T12:57:53.996454",
   "lbph_threshold": 60.0,
-  "sface_threshold": 0.38,
+  "sface_threshold": 0.37,
   "num_students": 19,
   "num_images": 365,
   "label_map": {

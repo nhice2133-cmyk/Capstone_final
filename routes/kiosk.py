@@ -189,16 +189,15 @@ def recognize():
         student_db_id = student_info["student_db_id"]
         now = datetime.now()
         last_rec = _last_recognized_time.get((student_db_id, camera_label))
-        
-        # If recognized recently on this camera, ignore to prevent UI looping
-        if last_rec and (now - last_rec).total_seconds() < Config.RECOGNITION_COOLDOWN_SECONDS:
-            return jsonify({"status": "cooldown", "face_box": face_box})
-
-        _last_recognized_time[(student_db_id, camera_label)] = now
 
         # Check if student has already logged attendance for today
         today_log = db.get_today_attendance_log(student_db_id)
         if today_log:
+            # If already logged today, enforce cooldown to prevent repeating notices
+            if last_rec and (now - last_rec).total_seconds() < Config.RECOGNITION_COOLDOWN_SECONDS:
+                return jsonify({"status": "cooldown", "face_box": face_box})
+
+            _last_recognized_time[(student_db_id, camera_label)] = now
             return jsonify({
                 "status": "already_logged",
                 "student_db_id": student_db_id,
@@ -211,7 +210,11 @@ def recognize():
                 "model_type": recognizer.active_model,
                 "face_box": face_box,
             })
-        
+
+        # If student just logged in within recent cooldown (10s), suppress re-trigger
+        if last_rec and (now - last_rec).total_seconds() < 10:
+            return jsonify({"status": "cooldown", "face_box": face_box})
+
         return jsonify({
             "status": "recognized",
             "student_db_id": student_db_id,
@@ -288,6 +291,7 @@ def log_entry():
         })
 
     record_id = db.log_time_in(student_db_id, visit_purpose, node="entry")
+    _last_recognized_time[(student_db_id, "entry")] = datetime.now()
     return jsonify({"success": True, "record_id": record_id})
 
 
@@ -314,6 +318,8 @@ def log_exit():
         }), 200
 
     updated = db.log_time_out(student_db_id)
+    if updated:
+        _last_recognized_time[(student_db_id, "exit")] = datetime.now()
     return jsonify({
         "success": updated,
         "error_type": None if updated else "not_entered",

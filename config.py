@@ -57,7 +57,7 @@ class Config:
     LABEL_MAP_PATH = os.path.join(MODELS_DIR, "label_map.json")
 
     # SFace Calibrated Cosine Similarity Threshold (higher = closer match; accepts >= threshold)
-    SFACE_THRESHOLD = 0.380
+    SFACE_THRESHOLD = 0.370
     RECOGNITION_THRESHOLD = 0.380
 
     # Images to capture per user during enrollment
