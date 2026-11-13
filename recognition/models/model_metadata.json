@@ -1,11 +1,11 @@
 {
   "active_model": "sface",
-  "version": "v20261113_125753",
-  "updated_at": "2026-11-13T12:57:53.996454",
+  "version": "v20261113_151538",
+  "updated_at": "2026-11-13T15:15:38.191090",
   "lbph_threshold": 60.0,
   "sface_threshold": 0.37,
-  "num_students": 19,
-  "num_images": 365,
+  "num_students": 21,
+  "num_images": 405,
   "label_map": {
     "15": {
       "student_db_id": 15,
@@ -56,6 +56,13 @@
       "program": "BSEE",
       "status": "active"
     },
+    "21": {
+      "student_db_id": 21,
+      "student_id": "GST-2026-7562",
+      "full_name": "Jay Pogoy",
+      "program": "Guest",
+      "status": "active"
+    },
     "6": {
       "student_db_id": 6,
       "student_id": "2023-0266",
@@ -82,6 +89,13 @@
       "student_id": "2023-0321",
       "full_name": "Kitchay Ya",
       "program": "EET",
+      "status": "active"
+    },
+    "22": {
+      "student_db_id": 22,
+      "student_id": "GST-2026-3866",
+      "full_name": "Me Ame",
+      "program": "Guest",
       "status": "active"
     },
     "10": {
