@@ -1,60 +1,81 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Security Alerts — CSUCC Athenaeum SMART ENTRY{% endblock %}
-{% block page_title %}Athenaeum Surveillance Alerts{% endblock %}
+{% block page_title %}Security Alerts{% endblock %}
 
 {% block admin_content %}
-<div class="toolbar" style="display: flex; justify-content: space-between; align-items: center;">
-  <div style="display: flex; gap: 8px;">
-    <a href="{{ url_for('kiosk.alerts_page') }}" class="btn {{ 'btn-primary' if active_tab == 'active' else 'btn-ghost' }}">⚠️ Active Alerts</a>
-    <a href="{{ url_for('kiosk.resolved_alerts_page') }}" class="btn {{ 'btn-primary' if active_tab == 'resolved' else 'btn-ghost' }}">📜 Resolved History</a>
+<div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <div style="display: flex; gap: 8px;">
+      <a href="{{ url_for('kiosk.alerts_page') }}" class="btn {{ 'btn-primary' if active_tab == 'active' else 'btn-ghost' }}">
+        ⚠️ Active <span class="badge" id="tabActiveCount" style="margin-left:4px; font-size:0.75rem; background:rgba(239,68,68,0.25); color:#fca5a5; padding:2px 7px; border-radius:10px;">{{ alerts|length if active_tab == 'active' else '' }}</span>
+      </a>
+      <a href="{{ url_for('kiosk.resolved_alerts_page') }}" class="btn {{ 'btn-primary' if active_tab == 'resolved' else 'btn-ghost' }}">
+        📜 Resolved <span class="badge" id="tabResolvedCount" style="margin-left:4px; font-size:0.75rem; background:rgba(16,185,129,0.25); color:#6ee7b7; padding:2px 7px; border-radius:10px;">{{ alerts|length if active_tab == 'resolved' else '' }}</span>
+      </a>
+    </div>
+
+    <!-- Live Polling Status Indicator -->
+    <span class="live-pulse-badge" id="liveAlertsIndicator" title="Actively streaming live surveillance events from entrance & exit kiosks">
+      <span class="live-dot"></span> LIVE UPDATING
+    </span>
   </div>
 
-  
   <div style="display: flex; align-items: center; gap: 15px;">
-    <span class="text-muted">
+    <span class="text-muted" id="alertSummaryStatus">
       {% if active_tab == 'active' %}
-      Unresolved alerts requiring your attention.
+      <span id="summaryCount">{{ alerts|length }}</span> pending alert(s).
       {% else %}
-      Past resolved security alerts.
+      <span id="summaryCount">{{ alerts|length }}</span> resolved alert(s).
       {% endif %}
     </span>
     
-    {% if active_tab == 'active' and alerts|length > 0 %}
-    <form method="POST" action="{{ url_for('kiosk.resolve_all_alerts') }}" onsubmit="return confirm('Are you sure you want to mark all active alerts as resolved?');" style="margin:0;">
-      <button type="submit" class="btn btn-sm btn-danger">Resolve All Alerts</button>
-    </form>
-    {% endif %}
-    
-    {% if active_tab == 'resolved' and alerts|length > 0 %}
-    <form method="POST" action="{{ url_for('kiosk.delete_all_resolved_alerts') }}" onsubmit="return confirm('Are you sure you want to completely delete all resolved alerts? This cannot be undone.');" style="margin:0;">
-      <button type="submit" class="btn btn-sm btn-danger">Clear All Resolved</button>
-    </form>
-    {% endif %}
+    <div id="bulkActionsWrap">
+      {% if active_tab == 'active' and alerts|length > 0 %}
+      <form method="POST" action="{{ url_for('kiosk.resolve_all_alerts') }}" onsubmit="return csuccConfirmSubmit(this, event, 'Mark all active alerts as resolved?', 'Resolve Alerts', 'warning', 'Resolve All');" style="margin:0;">
+        <button type="submit" class="btn btn-sm btn-danger" id="btnResolveAll">Resolve All</button>
+      </form>
+      {% endif %}
+      
+      {% if active_tab == 'resolved' and alerts|length > 0 %}
+      <form method="POST" action="{{ url_for('kiosk.delete_all_resolved_alerts') }}" onsubmit="return csuccConfirmSubmit(this, event, 'Are you sure you want to completely delete all resolved alerts? This cannot be undone.', 'Clear Resolved Alerts', 'danger', 'Clear All');" style="margin:0;">
+        <button type="submit" class="btn btn-sm btn-danger" id="btnClearAll">Clear All</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 </div>
 
 <div class="card mt-3">
   <div class="card-body p-0">
-    <table class="table">
+    <table class="table" id="alertsTable">
       <thead>
         <tr>
-          <th>#</th><th>Snapshot</th><th>Detected At</th>
-          <th>Confidence Score</th><th>Action</th>
+          <th style="width: 60px;">#</th>
+          <th style="width: 130px; text-align: center;">Snapshot</th>
+          <th>Time</th>
+          <th>Confidence</th>
+          <th style="width: 140px; text-align: right;">Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="alertsTableBody">
         {% for alert in alerts %}
-        <tr class="{{ 'alert-row-unresolved' if not alert.resolved }}">
-          <td>{{ loop.index }}</td>
-          <td>
+        <tr class="{{ 'alert-row-unresolved' if not alert.resolved }}" id="alertRow-{{ alert.id }}" data-alert-id="{{ alert.id }}">
+          <td class="alert-index">{{ loop.index }}</td>
+          <td style="text-align: center;">
             {% if alert.snapshot_path %}
-              <img src="{{ url_for('static', filename=alert.snapshot_path) }}"
-                   class="snapshot-thumb"
-                   onclick="openSnapshot(this.src)"
-                   title="Click to enlarge"
-                   alt="Stranger snapshot" />
+              <div style="display:inline-flex; align-items:center; justify-content:center; min-height:48px;">
+                <img src="{{ url_for('kiosk.view_alert_snapshot', alert_id=alert.id) }}"
+                     class="snapshot-thumb"
+                     onclick="openSnapshot(this.src)"
+                     onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';"
+                     title="Click to enlarge"
+                     alt="Stranger snapshot" />
+                <span class="text-muted" style="display:none; font-size:0.75rem; padding:4px 8px; border-radius:6px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#fca5a5;">
+                  📷 No image
+                </span>
+              </div>
             {% else %}
-              <span class="text-muted">No image</span>
+              <span class="text-muted" style="font-size:0.75rem;">No image</span>
             {% endif %}
           </td>
           <td>{{ alert.detected_at }}</td>
@@ -63,22 +84,21 @@
               {{ "%.1f"|format(alert.confidence_score) if alert.confidence_score else '—' }}
             </span>
           </td>
-          <td>
+          <td style="text-align: right;">
             {% if not alert.resolved %}
-            <form method="POST" action="{{ url_for('kiosk.resolve_alert', alert_id=alert.id) }}"
-                  style="display:inline;">
-              <button type="submit" class="btn btn-sm btn-success">✔ Mark Resolved</button>
-            </form>
+            <button type="button" class="btn btn-sm btn-success btn-resolve-ajax" onclick="resolveAlertAjax({{ alert.id }}, this)">
+              ✔ Resolve
+            </button>
             {% else %}
             <form method="POST" action="{{ url_for('kiosk.delete_alert', alert_id=alert.id) }}"
-                  style="display:inline;" onsubmit="return confirm('Delete this alert?');">
-              <button type="submit" class="btn btn-sm btn-danger">🗑️ Delete</button>
+                  style="display:inline;" onsubmit="return csuccConfirmSubmit(this, event, 'Permanently delete this alert snapshot?', 'Delete Alert', 'danger', 'Delete');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
             </form>
             {% endif %}
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="text-center text-muted">No security alerts recorded in this category.</td></tr>
+        <tr id="emptyAlertsRow"><td colspan="5" class="text-center text-muted" style="padding: 2.5rem 1rem;">No alerts recorded in this category.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -91,12 +111,226 @@
 </div>
 
 <script>
+const ACTIVE_TAB = "{{ active_tab }}";
+const API_URL = "{{ url_for('kiosk.alerts_api_data') }}";
+const RESOLVE_ALL_URL = "{{ url_for('kiosk.resolve_all_alerts') }}";
+const DELETE_ALL_URL = "{{ url_for('kiosk.delete_all_resolved_alerts') }}";
+
+let isPolling = false;
+
 function openSnapshot(src) {
   document.getElementById("lightboxImg").src = src;
   document.getElementById("lightbox").classList.remove("hidden");
 }
+
 function closeLightbox() {
   document.getElementById("lightbox").classList.add("hidden");
 }
+
+// ── AJAX Quick Resolve ────────────────────────────────────────────────────────
+async function resolveAlertAjax(alertId, btnElement) {
+  if (!btnElement) return;
+  const originalText = btnElement.innerHTML;
+  btnElement.disabled = true;
+  btnElement.innerHTML = "⏳...";
+
+  try {
+    const resp = await fetch(`/admin/alerts/api/resolve/${alertId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    const data = await resp.json();
+    if (data.success) {
+      const row = document.getElementById(`alertRow-${alertId}`);
+      if (row) {
+        row.classList.add("alert-row-removing");
+        setTimeout(() => {
+          row.remove();
+          reindexRows();
+          updateCounts(data.active_count, data.resolved_count);
+        }, 320);
+      }
+    } else {
+      btnElement.disabled = false;
+      btnElement.innerHTML = originalText;
+    }
+  } catch (err) {
+    console.error("Resolve error:", err);
+    btnElement.disabled = false;
+    btnElement.innerHTML = originalText;
+  }
+}
+
+// ── Helper: Re-index row numbers ──────────────────────────────────────────────
+function reindexRows() {
+  const tbody = document.getElementById("alertsTableBody");
+  const rows = tbody.querySelectorAll("tr[data-alert-id]");
+  rows.forEach((r, idx) => {
+    const idxCell = r.querySelector(".alert-index");
+    if (idxCell) idxCell.textContent = idx + 1;
+  });
+
+  const emptyRow = document.getElementById("emptyAlertsRow");
+  if (rows.length === 0) {
+    if (!emptyRow) {
+      const tr = document.createElement("tr");
+      tr.id = "emptyAlertsRow";
+      tr.innerHTML = `<td colspan="5" class="text-center text-muted" style="padding: 2.5rem 1rem;">No alerts recorded in this category.</td>`;
+      tbody.appendChild(tr);
+    }
+    // Hide bulk button
+    const bulkWrap = document.getElementById("bulkActionsWrap");
+    if (bulkWrap) bulkWrap.innerHTML = "";
+  } else if (emptyRow) {
+    emptyRow.remove();
+  }
+}
+
+// ── Helper: Update Counter Badges & Sidebar ──────────────────────────────────
+function updateCounts(activeCount, resolvedCount) {
+  // 1. Tab badges
+  const activeBadge = document.getElementById("tabActiveCount");
+  const resolvedBadge = document.getElementById("tabResolvedCount");
+  if (activeBadge) activeBadge.textContent = activeCount;
+  if (resolvedBadge) resolvedBadge.textContent = resolvedCount;
+
+  // 2. Summary text
+  const summary = document.getElementById("summaryCount");
+  if (summary) {
+    summary.textContent = (ACTIVE_TAB === "active") ? activeCount : resolvedCount;
+  }
+
+  // 3. Global sidebar badge
+  const sidebarBadge = document.getElementById("sidebarAlertBadge");
+  if (sidebarBadge) {
+    if (activeCount > 0) {
+      sidebarBadge.textContent = activeCount;
+      sidebarBadge.style.display = "inline-block";
+    } else {
+      sidebarBadge.style.display = "none";
+    }
+  }
+}
+
+// ── Render dynamic alert row ──────────────────────────────────────────────────
+function createAlertRow(alert, index) {
+  const tr = document.createElement("tr");
+  tr.id = `alertRow-${alert.id}`;
+  tr.dataset.alertId = alert.id;
+  tr.className = alert.resolved ? "" : "alert-row-unresolved alert-row-flash";
+
+  const snapshotHtml = alert.has_snapshot ? `
+    <div style="display:inline-flex; align-items:center; justify-content:center; min-height:48px;">
+      <img src="${alert.snapshot_url}"
+           class="snapshot-thumb"
+           onclick="openSnapshot(this.src)"
+           onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';"
+           title="Click to enlarge"
+           alt="Stranger snapshot" />
+      <span class="text-muted" style="display:none; font-size:0.75rem; padding:4px 8px; border-radius:6px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#fca5a5;">
+        📷 No image
+      </span>
+    </div>
+  ` : `<span class="text-muted" style="font-size:0.75rem;">No image</span>`;
+
+  const actionHtml = !alert.resolved ? `
+    <button type="button" class="btn btn-sm btn-success btn-resolve-ajax" onclick="resolveAlertAjax(${alert.id}, this)">
+      ✔ Resolve
+    </button>
+  ` : `
+    <form method="POST" action="${alert.delete_url}" style="display:inline;" onsubmit="return csuccConfirmSubmit(this, event, 'Permanently delete this alert snapshot?', 'Delete Alert', 'danger', 'Delete');">
+      <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+    </form>
+  `;
+
+  tr.innerHTML = `
+    <td class="alert-index">${index}</td>
+    <td style="text-align: center;">${snapshotHtml}</td>
+    <td>${alert.detected_at}</td>
+    <td>
+      <span class="confidence-badge">
+        ${alert.confidence_score !== null ? Number(alert.confidence_score).toFixed(1) : "—"}
+      </span>
+    </td>
+    <td style="text-align: right;">${actionHtml}</td>
+  `;
+
+  return tr;
+}
+
+// ── Real-Time Polling Engine ──────────────────────────────────────────────────
+async function pollAlerts() {
+  if (isPolling) return;
+  isPolling = true;
+
+  try {
+    const res = await fetch(`${API_URL}?tab=${ACTIVE_TAB}&limit=150`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+
+    updateCounts(data.active_count, data.resolved_count);
+
+    const tbody = document.getElementById("alertsTableBody");
+    const existingRowIds = new Set(
+      Array.from(tbody.querySelectorAll("tr[data-alert-id]")).map(r => Number(r.dataset.alertId))
+    );
+    const newAlertIds = new Set(data.alerts.map(a => a.id));
+
+    // 1. Remove rows that are no longer in this tab
+    tbody.querySelectorAll("tr[data-alert-id]").forEach(r => {
+      const id = Number(r.dataset.alertId);
+      if (!newAlertIds.has(id)) {
+        r.remove();
+      }
+    });
+
+    // 2. Prepend any new alerts that arrived
+    let hasNew = false;
+    for (let i = data.alerts.length - 1; i >= 0; i--) {
+      const alert = data.alerts[i];
+      if (!existingRowIds.has(alert.id)) {
+        hasNew = true;
+        const newRow = createAlertRow(alert, 1);
+        const emptyRow = document.getElementById("emptyAlertsRow");
+        if (emptyRow) emptyRow.remove();
+        tbody.prepend(newRow);
+      }
+    }
+
+    if (hasNew || existingRowIds.size !== newAlertIds.size) {
+      reindexRows();
+      
+      // Update bulk action button if count changed from 0 to >0
+      const bulkWrap = document.getElementById("bulkActionsWrap");
+      if (bulkWrap && data.alerts.length > 0 && !bulkWrap.querySelector("button")) {
+        if (ACTIVE_TAB === "active") {
+          bulkWrap.innerHTML = `
+            <form method="POST" action="${RESOLVE_ALL_URL}" onsubmit="return csuccConfirmSubmit(this, event, 'Mark all active alerts as resolved?', 'Resolve Alerts', 'warning', 'Resolve All');" style="margin:0;">
+              <button type="submit" class="btn btn-sm btn-danger" id="btnResolveAll">Resolve All</button>
+            </form>
+          `;
+        } else {
+          bulkWrap.innerHTML = `
+            <form method="POST" action="${DELETE_ALL_URL}" onsubmit="return csuccConfirmSubmit(this, event, 'Are you sure you want to completely delete all resolved alerts? This cannot be undone.', 'Clear Resolved Alerts', 'danger', 'Clear All');" style="margin:0;">
+              <button type="submit" class="btn btn-sm btn-danger" id="btnClearAll">Clear All</button>
+            </form>
+          `;
+        }
+      }
+    }
+
+  } catch (err) {
+    // Keep silent on transient connection drops
+    console.debug("Alerts poll error:", err);
+  } finally {
+    isPolling = false;
+  }
+}
+
+// Poll every 3 seconds
+setInterval(pollAlerts, 3000);
+// Initial count sync
+setTimeout(pollAlerts, 500);
 </script>
 {% endblock %}

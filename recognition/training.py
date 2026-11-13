@@ -150,7 +150,7 @@ def get_training_stats() -> dict:
             legacy_folder = os.path.join(face_data_dir, str(s["id"]))
             s_folder = named_folder if os.path.isdir(named_folder) else legacy_folder
             if os.path.isdir(s_folder):
-                imgs = [f for f in os.listdir(s_folder) if f.lower().endswith((".jpg", ".png", ".jpeg"))]
+                imgs = [f for f in os.listdir(s_folder) if f.lower().endswith((".enc", ".jpg", ".png", ".jpeg"))]
                 if imgs:
                     students_with_images += 1
                     disk_images += len(imgs)

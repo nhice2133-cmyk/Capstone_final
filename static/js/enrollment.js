@@ -412,16 +412,16 @@ function setUserType(type) {
     if (lblLastName)  lblLastName.textContent  = "Guest Last Name *";
     if (firstNameInput) firstNameInput.placeholder = "e.g. Maria";
     if (lastNameInput)  lastNameInput.placeholder  = "e.g. Santos";
-    if (lblFullName) lblFullName.textContent = "Guest / Visitor Full Name *";
-    if (fullNameInput) fullNameInput.placeholder = "e.g. Maria Santos / Visitor Name";
-    if (enrollCardHeader) enrollCardHeader.textContent = "📝 Guest / Visitor Biometric Enrollment";
+    if (lblFullName) lblFullName.textContent = "Guest Full Name *";
+    if (fullNameInput) fullNameInput.placeholder = "e.g. Maria Santos";
+    if (enrollCardHeader) enrollCardHeader.textContent = "📝 Guest Information";
 
     if (programInput && (!programInput.value || programInput.value.startsWith("BS") || programInput.value.startsWith("BT") || programInput.value.startsWith("EET") || programInput.value.startsWith("Faculty") || programInput.value.startsWith("Library"))) {
       programInput.value = "Guest";
     }
     const lblProg = document.getElementById("lblProgram");
-    if (lblProg) lblProg.textContent = "Guest / Visitor Category *";
-    if (programInput) programInput.placeholder = "Select guest category (e.g. Guest / Athenaeum Visitor)...";
+    if (lblProg) lblProg.textContent = "Guest Category *";
+    if (programInput) programInput.placeholder = "Select guest category...";
     if (guestModeIndicator) guestModeIndicator.classList.remove("hidden");
     highlightActiveComboboxItem("Guest");
     updateClearBtn();
@@ -445,11 +445,11 @@ function setUserType(type) {
     if (lastNameInput)  lastNameInput.placeholder  = "e.g. Dela Cruz";
     if (lblFullName) lblFullName.textContent = "Full Name *";
     if (fullNameInput) fullNameInput.placeholder = "e.g. Juan C. Dela Cruz";
-    if (enrollCardHeader) enrollCardHeader.textContent = "📝 Student / Employee Institutional Information";
+    if (enrollCardHeader) enrollCardHeader.textContent = "📝 User Information";
 
     const lblProg = document.getElementById("lblProgram");
     if (lblProg) lblProg.textContent = "Program / Department *";
-    if (programInput) programInput.placeholder = "Search program (e.g. BSIT, BSEE, BSA) or department...";
+    if (programInput) programInput.placeholder = "Search program or department...";
 
     if (programInput && (programInput.value === "Guest" || programInput.value === "Visiting-Researcher" || programInput.value === "Community-User")) {
       programInput.value = "";
@@ -651,7 +651,7 @@ infoForm.addEventListener("submit", async (e) => {
   }
 
   btnSaveInfo.disabled = false;
-  btnSaveInfo.textContent = "Save & Proceed to Capture →";
+  btnSaveInfo.textContent = "Proceed to Capture →";
 });
 
 // ── Webcam init ───────────────────────────────────────────────────────────────
@@ -670,7 +670,14 @@ async function initWebcam() {
 
 // ── Step 2: Auto-capture 20 Quality Images ─────────────────────────────────────
 btnStart.addEventListener("click", () => {
-  if (!enrollToken) { alert("Please save and verify student info first."); return; }
+  if (!enrollToken) {
+    if (window.csuccAlert) {
+      window.csuccAlert("Please save and verify student information in Step 1 before starting capture.", "Verification Required", "warning");
+    } else {
+      alert("Please save and verify student info first.");
+    }
+    return;
+  }
   capturedCount = 0;
   updateProgress(0);
   if (guidanceBanner) {

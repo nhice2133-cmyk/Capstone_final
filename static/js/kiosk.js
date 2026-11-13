@@ -25,15 +25,21 @@ const stateIdentifySuccess = document.getElementById("stateIdentifySuccess");
 const statePurpose         = document.getElementById("statePurpose");
 const stateConfirmed       = document.getElementById("stateConfirmed");
 const stateAlert           = document.getElementById("stateAlert");
+const stateAlreadyLogged   = document.getElementById("stateAlreadyLogged");
 
 let transitionTimeout = null;
 
 // ── State machine ───────────────────────────────────────────────────────────
-let currentState   = "idle";       // idle | purpose_selection | confirmed | alert
+let currentState   = "idle";       // idle | purpose_selection | confirmed | alert | already_logged
 let recognitionLoop = null;
 let isRecognizing  = false;        // Concurrency guard to prevent queue pile-up
 let studentDbId    = null;
 let consecutiveUnknownCount = 0;
+
+// ── Temporal verification state ─────────────────────────────────────────────
+let pendingStudentDbId = null;
+let consecutiveRecognizedCount = 0;
+const REQUIRED_RECOGNITION_CONSECUTIVE = 2; // Require 2 consecutive frames (~0.7s) to eliminate identity flickers
 
 // ── Face box state ──────────────────────────────────────────────────────────
 let lastFaceBox      = null;   // current target face box {x, y, w, h}
@@ -121,30 +127,58 @@ async function runRecognition() {
 function handleRecognitionResult(data) {
   // Update face bounding box for any response that includes one
   if (data.face_box) {
-    const isRecognized = data.status === "recognized" || data.status === "cooldown";
+    const isRecognized = data.status === "recognized" || data.status === "already_logged" || data.status === "cooldown";
     const boxColor = isRecognized ? "cyan" : (data.status === "unknown" ? "red" : "cyan");
     updateFaceBox(data.face_box, boxColor);
   }
 
   if (data.status === "no_face") {
     consecutiveUnknownCount = 0;
+    consecutiveRecognizedCount = 0;
+    pendingStudentDbId = null;
     return;
   }
 
   if (data.status === "cooldown") {
     consecutiveUnknownCount = 0;
+    consecutiveRecognizedCount = 0;
+    pendingStudentDbId = null;
+    return;
+  }
+
+  if (data.status === "already_logged") {
+    consecutiveUnknownCount = 0;
+    consecutiveRecognizedCount = 0;
+    pendingStudentDbId = null;
+    showAlreadyLoggedState(data);
     return;
   }
 
   if (data.status === "recognized") {
     consecutiveUnknownCount = 0;
-    studentDbId = data.student_db_id;
-    // Prompt for visit purpose directly
-    promptVisitPurpose(data);
+
+    // Temporal consistency verification:
+    // Only confirm identity if the same student is detected across consecutive frames
+    if (pendingStudentDbId === data.student_db_id) {
+      consecutiveRecognizedCount++;
+    } else {
+      pendingStudentDbId = data.student_db_id;
+      consecutiveRecognizedCount = 1;
+    }
+
+    if (consecutiveRecognizedCount >= REQUIRED_RECOGNITION_CONSECUTIVE) {
+      consecutiveRecognizedCount = 0;
+      pendingStudentDbId = null;
+      studentDbId = data.student_db_id;
+      // Prompt for visit purpose directly
+      promptVisitPurpose(data);
+    }
     return;
   }
 
   if (data.status === "unknown") {
+    consecutiveRecognizedCount = 0;
+    pendingStudentDbId = null;
     consecutiveUnknownCount++;
     // Only lock out into full alert if persistently unknown for 3 consecutive frames (~1.2s)
     if (consecutiveUnknownCount >= 3) {
@@ -351,7 +385,43 @@ function showAlertState() {
 
   switchInfoState(stateAlert);
 
-  setTimeout(resetToIdle, ALERT_DISPLAY_MS);
+  if (transitionTimeout) clearTimeout(transitionTimeout);
+  transitionTimeout = setTimeout(resetToIdle, ALERT_DISPLAY_MS);
+}
+
+// ── Already Logged state (Student already passed attendance today) ───────────
+const ALREADY_LOGGED_DISPLAY_MS = 2800; // Display for 2.8s then move on
+
+function showAlreadyLoggedState(data) {
+  currentState = "already_logged";
+  stopRecognitionLoop();
+
+  const nameEl = document.getElementById("alreadyLoggedName");
+  const detailsEl = document.getElementById("alreadyLoggedDetails");
+  const timeEl = document.getElementById("alreadyLoggedTime");
+
+  if (nameEl) nameEl.textContent = data.full_name || "Student";
+  if (detailsEl) detailsEl.textContent = data.program || "Registered Student";
+  if (timeEl) timeEl.textContent = data.time_in ? formatTime(data.time_in) : "Earlier today";
+
+  switchInfoState(stateAlreadyLogged);
+
+  // Automatically move on after displaying the notice
+  if (transitionTimeout) clearTimeout(transitionTimeout);
+  transitionTimeout = setTimeout(resetToIdle, ALREADY_LOGGED_DISPLAY_MS);
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return "";
+  const parts = timeStr.split(":");
+  if (parts.length >= 2) {
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${ampm}`;
+  }
+  return timeStr;
 }
 
 // ── Reset ───────────────────────────────────────────────────────────────────
@@ -372,7 +442,7 @@ function resetToIdle() {
 
 // ── Info panel helper ────────────────────────────────────────────────────────
 function switchInfoState(target) {
-  [stateDefault, stateIdentifySuccess, statePurpose, stateConfirmed, stateAlert].forEach(el => {
+  [stateDefault, stateIdentifySuccess, statePurpose, stateConfirmed, stateAlert, stateAlreadyLogged].forEach(el => {
     if (el) el.classList.toggle("hidden", el !== target);
   });
 }
@@ -395,13 +465,13 @@ initWebcam();
 
 // ── Dynamic Background & Facility Slideshow (Cycles ALL Campus Images) ────────
 const FACILITY_SLIDES = [
-  { img: "/static/images/Athenaeum.png", label: "CSUCC ATHENAEUM LEARNING COMMONS" },
-  { img: "/static/images/Campus_Library.png", label: "ATHENAEUM LIBRARY COMMONS" },
-  { img: "/static/images/Campus_Facade.png", label: "CSUCC CABADBARAN CAMPUS FACADE" },
-  { img: "/static/images/csucc_campus_field_hd.jpg", label: "CSUCC CAMPUS FIELD & RECREATION" },
-  { img: "/static/images/csucc_admin_building_hd.jpg", label: "CSUCC ADMINISTRATION COMPLEX" },
-  { img: "/static/images/athenaeum_entrance.jpg", label: "ATHENAEUM ENTRANCE GATE" },
-  { img: "/static/images/csucc_banner_hd.png", label: "CARAGA STATE UNIVERSITY CABADBARAN" }
+  { img: "/static/images/Athenaeum.png", label: "CSUCC ATHENAEUM" },
+  { img: "/static/images/Campus_Library.png", label: "ATHENAEUM LIBRARY" },
+  { img: "/static/images/Campus_Facade.png", label: "CAMPUS FACADE" },
+  { img: "/static/images/csucc_campus_field_hd.jpg", label: "CAMPUS FIELD" },
+  { img: "/static/images/csucc_admin_building_hd.jpg", label: "ADMIN BUILDING" },
+  { img: "/static/images/athenaeum_entrance.jpg", label: "ATHENAEUM ENTRANCE" },
+  { img: "/static/images/csucc_banner_hd.png", label: "CSU CABADBARAN" }
 ];
 
 let facilitySlideIndex = 0;

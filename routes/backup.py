@@ -1,6 +1,9 @@
 """
 SMART ENTRY — System Backup & Disaster Recovery Blueprint
-Enables library administrators to create, download, and restore complete system snapshots.
+Enables library administrators to independently create, download, and restore:
+1. System Core & Logs (Attendance logs, security alerts, alert snapshots, admin settings)
+2. Enrolled Students & Face Biometrics (Patron profiles, face_data/ images, SFace embeddings)
+3. Full System Snapshots (Combined complete disaster recovery)
 """
 
 import os
@@ -33,35 +36,69 @@ def backup_dashboard():
     """Renders the Backup & Disaster Recovery Management dashboard."""
     manifest = get_system_manifest()
     backups = list_backups()
+    
+    # Categorize counts for dashboard pills
+    counts = {
+        "all": len(backups),
+        "system": len([b for b in backups if b.get("backup_type") == "system"]),
+        "biometrics": len([b for b in backups if b.get("backup_type") == "biometrics"]),
+        "full": len([b for b in backups if b.get("backup_type") == "full"]),
+    }
+    
     return render_template(
         "admin/backup_restore.html",
         manifest=manifest,
-        backups=backups
+        backups=backups,
+        counts=counts
     )
 
 
 @backup_bp.route("/create", methods=["POST"])
 @login_required
 def create_backup_action():
-    """Creates a local system backup archive."""
-    description = request.form.get("description", "Manual Admin Snapshot").strip()
-    if not description:
-        description = "Manual Admin Snapshot"
+    """Creates a local backup archive for the specified category."""
+    backup_type = request.form.get("backup_type", "system").strip().lower()
+    if backup_type not in ["system", "biometrics", "full"]:
+        backup_type = "system"
+
+    description = request.form.get("description", "").strip()
     try:
-        path = create_system_backup(description=description)
+        path = create_system_backup(description=description or None, backup_type=backup_type)
         filename = os.path.basename(path)
-        flash(f"System backup created successfully: {filename}", "success")
+        
+        type_labels = {
+            "system": "System Core & Logs",
+            "biometrics": "Enrolled Students & Biometrics",
+            "full": "Full System Archive"
+        }
+        label = type_labels.get(backup_type, "Backup")
+        flash(f"{label} created successfully: {filename}", "success")
     except Exception as e:
-        flash(f"Failed to create system backup: {str(e)}", "danger")
+        flash(f"Failed to create backup: {str(e)}", "danger")
+        
     return redirect(url_for("backup.backup_dashboard"))
 
 
 @backup_bp.route("/download-current", methods=["GET"])
 @login_required
 def download_current_backup():
-    """Generates a fresh backup archive and triggers immediate browser download."""
+    """Generates a fresh backup archive for the selected category and streams download."""
+    backup_type = request.args.get("type", "system").strip().lower()
+    if backup_type not in ["system", "biometrics", "full"]:
+        backup_type = "system"
+
+    type_labels = {
+        "system": "System Logs",
+        "biometrics": "Students Biometrics",
+        "full": "Full System"
+    }
+    label = type_labels.get(backup_type, "Backup")
+
     try:
-        path = create_system_backup(description="Direct Web Download Backup")
+        path = create_system_backup(
+            description=f"Direct Download ({label})",
+            backup_type=backup_type
+        )
         filename = os.path.basename(path)
         return send_file(
             path,
@@ -70,7 +107,7 @@ def download_current_backup():
             mimetype="application/zip"
         )
     except Exception as e:
-        flash(f"Could not generate download archive: {str(e)}", "danger")
+        flash(f"Could not generate {label} download: {str(e)}", "danger")
         return redirect(url_for("backup.backup_dashboard"))
 
 
@@ -95,8 +132,11 @@ def download_existing_backup(filename):
 @login_required
 def restore_backup_action():
     """
-    Restores the system from an uploaded ZIP archive or an existing local snapshot.
+    Restores data from an uploaded ZIP archive or an existing local snapshot.
+    Automatically detects whether the archive is a System backup, Biometrics backup, or Full backup.
     """
+    force_type = request.form.get("restore_type")
+    
     # 1. Check if a file was uploaded
     uploaded_file = request.files.get("backup_file")
     if uploaded_file and uploaded_file.filename:
@@ -108,7 +148,11 @@ def restore_backup_action():
         temp_target = os.path.join(BACKUPS_DIR, f"upload_{filename}")
         uploaded_file.save(temp_target)
         try:
-            success, message = restore_system_backup(temp_target, create_safety_snapshot=True)
+            success, message = restore_system_backup(
+                temp_target, 
+                create_safety_snapshot=True, 
+                force_type=force_type
+            )
             if success:
                 flash(message, "success")
             else:
@@ -130,7 +174,11 @@ def restore_backup_action():
             flash("Selected local backup file does not exist.", "danger")
             return redirect(url_for("backup.backup_dashboard"))
 
-        success, message = restore_system_backup(target_path, create_safety_snapshot=True)
+        success, message = restore_system_backup(
+            target_path, 
+            create_safety_snapshot=True, 
+            force_type=force_type
+        )
         if success:
             flash(message, "success")
         else:
@@ -151,4 +199,3 @@ def delete_backup_action(filename):
     else:
         flash(f"Could not delete backup archive '{safe_name}'.", "danger")
     return redirect(url_for("backup.backup_dashboard"))
-

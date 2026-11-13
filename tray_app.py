@@ -73,6 +73,11 @@ class SmartEntryTrayApp:
             os.makedirs(os.path.join("recognition", "haarcascade"), exist_ok=True)
 
             init_db()
+            try:
+                from recognition.image_crypto import encrypt_all_saved_images
+                encrypt_all_saved_images()
+            except Exception:
+                pass
             app = create_app()
             _seed_default_admin(app)
 

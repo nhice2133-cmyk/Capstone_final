@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}SMART ENTRY — CSUCC Athenaeum | Caraga State University Cabadbaran Campus{% endblock %}</title>
+  <title>{% block title %}CSUCC Athenaeum — SMART ENTRY{% endblock %}</title>
   <meta name="description" content="SMART ENTRY: A Face Recognition-Based Attendance and Security Surveillance Kiosk System For The CSUCC Library." />
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/csu_seal.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   {% block extra_css %}{% endblock %}
+  <script src="{{ url_for('static', filename='js/csucc-dialog.js') }}"></script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block content %}{% endblock %}

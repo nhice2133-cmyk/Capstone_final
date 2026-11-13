@@ -10,6 +10,7 @@ import numpy as np
 from config import Config, sanitize_name_for_filesystem
 from database import database as db
 from recognition.model_manager import ModelManager
+from recognition.image_crypto import load_encrypted_image
 
 
 class SFaceRecognizer:
@@ -98,6 +99,11 @@ class SFaceRecognizer:
     def save_embeddings(self):
         """Persist embeddings and student centroids to disk."""
         if not self._centroids:
+            if os.path.exists(Config.SFACE_EMBEDDINGS_PATH):
+                try:
+                    os.remove(Config.SFACE_EMBEDDINGS_PATH)
+                except Exception:
+                    pass
             return
 
         os.makedirs(Config.MODELS_DIR, exist_ok=True)
@@ -182,7 +188,7 @@ class SFaceRecognizer:
 
             valid_files = [
                 f for f in os.listdir(s_folder)
-                if f.lower().endswith((".jpg", ".jpeg", ".png"))
+                if f.lower().endswith((".enc", ".jpg", ".jpeg", ".png"))
             ]
             if not valid_files:
                 continue
@@ -190,7 +196,7 @@ class SFaceRecognizer:
             student_embeddings = []
             for f in valid_files:
                 p = os.path.join(s_folder, f)
-                img = cv2.imread(p)
+                img = load_encrypted_image(p)
                 if img is None:
                     continue
 
@@ -221,8 +227,13 @@ class SFaceRecognizer:
 
     def predict(self, face_roi, threshold: float = None):
         """
-        Predict identity for a face ROI using cosine similarity against
-        enrolled student reference embeddings.
+        Predict identity for a face ROI using robust centroid-anchored
+        multi-exemplar consensus scoring and margin separation.
+
+        Prevents identity confusion and false positives:
+        - Top-3 exemplar consensus (mean of top 3 matches per student)
+        - Centroid anchoring (query must be consistent with student identity centroid)
+        - Strict margin separation (rejects ambiguous matches where top-1 is too close to top-2)
 
         Returns
         -------
@@ -240,34 +251,55 @@ class SFaceRecognizer:
         if query_emb is None:
             return -1, 0.0, None
 
-        best_student_id = -1
-        max_similarity = -1.0
-
-        # Multi-exemplar + Centroid hybrid matching:
-        # Check against centroids first, then verify against individual reference samples
+        # Robust multi-candidate ranking
+        candidates = []
         for sid, centroid in self._centroids.items():
-            # Cosine similarity is dot product of normalized vectors
-            sim = float(np.dot(query_emb, centroid.T)[0][0])
-            
-            # If multi-exemplars exist, also test individual exemplar match
-            exemplars = self._embeddings_db.get(sid)
+            sim_c = float(np.dot(query_emb, centroid.T)[0][0])
+            exemplars = self._embeddings_db.get(sid, [])
             if exemplars:
                 exemplar_sims = [float(np.dot(query_emb, e.T)[0][0]) for e in exemplars]
-                max_exemplar_sim = max(exemplar_sims)
-                # Accurate multi-pose fusion: give credit to best matching enrolled pose
-                # while incorporating centroid consistency
-                combined_sim = max(max_exemplar_sim, 0.7 * max_exemplar_sim + 0.3 * sim)
+                topk = sorted(exemplar_sims, reverse=True)[:3]
+                avg_topk = float(np.mean(topk))
+                # Weighted fusion: 40% centroid anchor + 60% top-3 consensus
+                final_score = 0.4 * sim_c + 0.6 * avg_topk
             else:
-                combined_sim = sim
+                avg_topk = sim_c
+                final_score = sim_c
 
-            if combined_sim > max_similarity:
-                max_similarity = combined_sim
-                best_student_id = sid
+            candidates.append({
+                "sid": sid,
+                "score": final_score,
+                "centroid_sim": sim_c,
+                "topk_avg": avg_topk,
+            })
 
-        # Check threshold
-        if max_similarity >= threshold and best_student_id != -1:
-            student_info = ModelManager.resolve_student_id(best_student_id)
+        if not candidates:
+            return -1, 0.0, None
+
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        top1 = candidates[0]
+        top2 = candidates[1] if len(candidates) > 1 else None
+
+        best_score = top1["score"]
+        best_sid = top1["sid"]
+
+        # Minimum margin to prevent identity confusion
+        # If the runner-up is too close, the prediction is ambiguous and rejected
+        min_margin = 0.035
+        is_separated = True
+        if top2 is not None:
+            margin = best_score - top2["score"]
+            if margin < min_margin:
+                is_separated = False
+
+        # Centroid consistency guard: identity cannot contradict the person's centroid
+        min_centroid = max(0.28, threshold - 0.08)
+        centroid_ok = top1["centroid_sim"] >= min_centroid
+
+        # Check threshold, margin separation, and centroid consistency
+        if best_score >= threshold and is_separated and centroid_ok and best_sid != -1:
+            student_info = ModelManager.resolve_student_id(best_sid)
             if student_info:
-                return best_student_id, max_similarity, student_info
+                return best_sid, best_score, student_info
 
-        return -1, max_similarity, None
+        return -1, best_score, None

@@ -1,12 +1,146 @@
 {
   "active_model": "sface",
-  "version": "v20261112_015754",
-  "updated_at": "2026-11-12T01:57:54.449606",
+  "version": "v20261113_125753",
+  "updated_at": "2026-11-13T12:57:53.996454",
   "lbph_threshold": 60.0,
-  "sface_threshold": 0.363,
-  "num_students": 0,
-  "num_images": 0,
-  "label_map": {},
+  "sface_threshold": 0.38,
+  "num_students": 19,
+  "num_images": 365,
+  "label_map": {
+    "15": {
+      "student_db_id": 15,
+      "student_id": "2023-0535",
+      "full_name": "Augustin Aboc",
+      "program": "BSTM",
+      "status": "active"
+    },
+    "14": {
+      "student_db_id": 14,
+      "student_id": "2023-0550",
+      "full_name": "Bernadine Cabilogan",
+      "program": "BSHM",
+      "status": "active"
+    },
+    "11": {
+      "student_db_id": 11,
+      "student_id": "1234-5678",
+      "full_name": "Bongbong Marcos",
+      "program": "BSTM",
+      "status": "active"
+    },
+    "5": {
+      "student_db_id": 5,
+      "student_id": "2023-0516",
+      "full_name": "Fidel Jotojot",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "2": {
+      "student_db_id": 2,
+      "student_id": "2023-0004",
+      "full_name": "Frince R-Jay Enriquez",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "17": {
+      "student_db_id": 17,
+      "student_id": "2023-0540",
+      "full_name": "Heziel Ann Dagoplo",
+      "program": "BSFBSM",
+      "status": "active"
+    },
+    "18": {
+      "student_db_id": 18,
+      "student_id": "2023-0728",
+      "full_name": "Jan Bustillo",
+      "program": "BSEE",
+      "status": "active"
+    },
+    "6": {
+      "student_db_id": 6,
+      "student_id": "2023-0266",
+      "full_name": "Jema Geng",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "3": {
+      "student_db_id": 3,
+      "student_id": "2020-1042",
+      "full_name": "Jessrel James Galagate",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "12": {
+      "student_db_id": 12,
+      "student_id": "2023-0133",
+      "full_name": "John Guzon",
+      "program": "BSA",
+      "status": "active"
+    },
+    "20": {
+      "student_db_id": 20,
+      "student_id": "2023-0321",
+      "full_name": "Kitchay Ya",
+      "program": "EET",
+      "status": "active"
+    },
+    "10": {
+      "student_db_id": 10,
+      "student_id": "251-03960",
+      "full_name": "Regine Silab",
+      "program": "Others",
+      "status": "active"
+    },
+    "9": {
+      "student_db_id": 9,
+      "student_id": "GST-2026-9420",
+      "full_name": "Rencel Sevilla",
+      "program": "Guest",
+      "status": "active"
+    },
+    "8": {
+      "student_db_id": 8,
+      "student_id": "2023-0491",
+      "full_name": "Ricamae Azumbrado",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "13": {
+      "student_db_id": 13,
+      "student_id": "2023-0054",
+      "full_name": "Robert Cabilogan",
+      "program": "BTVTED-WFT",
+      "status": "active"
+    },
+    "19": {
+      "student_db_id": 19,
+      "student_id": "2023-0000",
+      "full_name": "Rosie Popo",
+      "program": "BSCPE",
+      "status": "active"
+    },
+    "7": {
+      "student_db_id": 7,
+      "student_id": "2023-0045",
+      "full_name": "Sachin Kumar",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "4": {
+      "student_db_id": 4,
+      "student_id": "2022-1354",
+      "full_name": "Zhask Alvarez",
+      "program": "BSIT",
+      "status": "active"
+    },
+    "16": {
+      "student_db_id": 16,
+      "student_id": "2023-0077",
+      "full_name": "Zylcee Dalagon",
+      "program": "BSA",
+      "status": "active"
+    }
+  },
   "has_backup": true,
   "backup_version": "backup_20261110_124723",
   "last_evaluation": {
@@ -18,8 +152,7 @@
       "val_stranger_attempts": 60,
       "total_eval_attempts": 100
     },
-    "lbph_acc": 80.0,
-    "sface_acc": 97.5
+    "sface_acc": 100.0
   },
   "sface_synced": true,
   "restored_from": "backup_20261109_234023"

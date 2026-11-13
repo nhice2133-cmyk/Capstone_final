@@ -1,6 +1,6 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Attendance — CSUCC Athenaeum SMART ENTRY{% endblock %}
-{% block page_title %}Athenaeum Attendance Records{% endblock %}
+{% block page_title %}Attendance Records{% endblock %}
 
 {% block admin_content %}
 <!-- Filter bar -->
@@ -8,11 +8,11 @@
   <form method="GET" action="{{ url_for('attendance.attendance_page') }}" class="filter-form" id="attendanceFilterForm">
     <div class="filter-row">
       <div class="form-group form-group-date">
-        <label>From Date</label>
+        <label>From</label>
         <input type="date" name="date_from" id="filterDateFrom" value="{{ filters.date_from }}" />
       </div>
       <div class="form-group form-group-date">
-        <label>To Date</label>
+        <label>To</label>
         <input type="date" name="date_to" id="filterDateTo" value="{{ filters.date_to }}" />
       </div>
       <div class="form-group form-group-program">
@@ -25,17 +25,17 @@
         </select>
       </div>
       <div class="form-group form-group-purpose">
-        <label>Visit Purpose</label>
+        <label>Purpose</label>
         <select name="purpose" id="filterPurpose">
-          <option value="">All Visit Purposes</option>
+          <option value="">All Purposes</option>
           {% for p in purposes %}
             <option {% if filters.purpose == p %}selected{% endif %}>{{ p }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="form-group form-group-search">
-        <label>Search Identity</label>
-        <input type="text" name="search" id="filterSearch" value="{{ filters.search }}" placeholder="Search name or ID…" autocomplete="off" />
+        <label>Search</label>
+        <input type="text" name="search" id="filterSearch" value="{{ filters.search }}" placeholder="Search name or ID..." autocomplete="off" />
       </div>
       <div class="filter-actions">
         <button type="submit" class="btn btn-sm btn-primary" id="filterSubmitBtn">🔍 Filter</button>
@@ -48,13 +48,13 @@
 <!-- Export button & counter toolbar -->
 <div class="toolbar my-2">
   <div style="display: flex; align-items: center; gap: 10px;">
-    <span class="text-muted"><strong id="recordCount" style="color: var(--csu-gold-400);">{{ logs | length }}</strong> record(s) indexed</span>
+    <span class="text-muted"><strong id="recordCount" style="color: var(--csu-gold-400);">{{ logs | length }}</strong> records</span>
     <span class="live-badge" id="liveFilterBadge" style="display: none;">
-      <span class="live-badge-dot"></span> Realtime Filtered
+      <span class="live-badge-dot"></span> Filtered
     </span>
   </div>
   <a href="{{ url_for('attendance.export_csv', **filters) }}" class="btn btn-sm btn-gold" id="exportCsvBtn">
-    📥 Export Athenaeum CSV
+    📥 Export CSV
   </a>
 </div>
 
@@ -65,7 +65,7 @@
     <table class="table" id="attendanceTable">
       <thead>
         <tr>
-          <th>#</th><th>Full Name</th><th>Student ID</th><th>Program</th>
+          <th>#</th><th>Name</th><th>ID</th><th>Program</th>
           <th>Date</th><th>Time In</th><th>Purpose</th>
         </tr>
       </thead>

@@ -11,7 +11,7 @@
     "model_name": "LBPH",
     "model_type": "lbph",
     "recommended_threshold": 58,
-    "average_recognition_time_ms": 14.77,
+    "average_recognition_time_ms": 14.32,
     "metrics_at_recommended_threshold": {
       "threshold": 58,
       "correct_id_rate": 80.0,
@@ -425,7 +425,7 @@
     "model_name": "OpenCV SFace",
     "model_type": "sface",
     "recommended_threshold": 0.44,
-    "average_recognition_time_ms": 70.25,
+    "average_recognition_time_ms": 62.09,
     "metrics_at_recommended_threshold": {
       "threshold": 0.44,
       "correct_id_rate": 100.0,

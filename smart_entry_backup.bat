@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title SMART ENTRY - System Backup & Disaster Recovery
+title SMART ENTRY - Granular Backup & Disaster Recovery Tool
 color 0A
 
 :: Resolve absolute project directory
@@ -19,60 +19,90 @@ if exist "%PROJECT_ROOT%\venv\Scripts\python.exe" (
 cls
 echo ===============================================================================
 echo   CARAGA STATE UNIVERSITY CABADBARAN CAMPUS (CSUCC) - ATHENAEUM LIBRARY
-echo   SMART ENTRY: System Backup & Disaster Recovery Tool
+echo   SMART ENTRY: Granular Backup ^& Disaster Recovery Tool
 echo ===============================================================================
 echo.
-echo   [1] Create Full System Backup (.zip)
-echo   [2] Restore System from a Backup Archive (.zip)
-echo   [3] List All Available Local Backups
-echo   [4] Open Backups Folder in Windows Explorer
-echo   [5] Launch SMART ENTRY Web Application
-echo   [6] Exit
+echo   [1] Create System Logs ^& Alerts Backup (.zip)
+echo   [2] Create Enrolled Students ^& Face Biometrics Backup (.zip)
+echo   [3] Create Full System Disaster Recovery Backup (.zip)
+echo   [4] Restore from a Backup Archive (Auto-detects System or Biometrics)
+echo   [5] List All Available Local Backups
+echo   [6] Open Backups Folder in Windows Explorer
+echo   [7] Decrypt Biometric ^& Snapshot Files (.enc -^> .jpg) [Decryption Tool]
+echo   [8] Exit
 echo.
 echo ===============================================================================
-set /p "CHOICE=Enter choice [1-6]: "
+set /p "CHOICE=Enter choice [1-8]: "
 
-if "%CHOICE%"=="1" goto CREATE_BACKUP
-if "%CHOICE%"=="2" goto RESTORE_BACKUP
-if "%CHOICE%"=="3" goto LIST_BACKUPS
-if "%CHOICE%"=="4" goto OPEN_FOLDER
-if "%CHOICE%"=="5" goto LAUNCH_APP
-if "%CHOICE%"=="6" goto EXIT_TOOL
+if "%CHOICE%"=="1" goto CREATE_SYSTEM_BACKUP
+if "%CHOICE%"=="2" goto CREATE_BIOMETRICS_BACKUP
+if "%CHOICE%"=="3" goto CREATE_FULL_BACKUP
+if "%CHOICE%"=="4" goto RESTORE_BACKUP
+if "%CHOICE%"=="5" goto LIST_BACKUPS
+if "%CHOICE%"=="6" goto OPEN_FOLDER
+if "%CHOICE%"=="7" goto DECRYPT_TOOL
+if "%CHOICE%"=="8" goto EXIT_TOOL
 goto MENU
 
-:CREATE_BACKUP
+:CREATE_SYSTEM_BACKUP
 cls
 echo ===============================================================================
-echo   CREATING COMPLETE SYSTEM BACKUP
+echo   CREATING SYSTEM LOGS ^& ALERTS BACKUP
+echo ===============================================================================
+echo.
+echo   Capturing:
+echo   - Attendance logs (time-in / time-out)
+echo   - Security alerts and surveillance snapshots
+echo   - Administrator credentials and recovery keys
+echo   - Enrolled students and facial photos are NOT included (remains untouched)
+echo.
+"%PYTHON_CMD%" -c "
+from tools.backup_restore import create_system_backup
+path = create_system_backup(description='Offline Tool System Logs Backup', backup_type='system')
+print('\n[SUCCESS] System Backup created at:\n' + path)
+"
+echo.
+pause
+goto MENU
+
+:CREATE_BIOMETRICS_BACKUP
+cls
+echo ===============================================================================
+echo   CREATING ENROLLED STUDENTS ^& FACE BIOMETRICS BACKUP
+echo ===============================================================================
+echo.
+echo   Capturing:
+echo   - Enrolled student profiles (names, IDs, programs)
+echo   - Face crops in face_data/ (20 samples per student)
+echo   - SFace deep feature embeddings and model metadata
+echo   - Library attendance logs are NOT included (remains untouched)
+echo.
+"%PYTHON_CMD%" -c "
+from tools.backup_restore import create_system_backup
+path = create_system_backup(description='Offline Tool Biometrics Backup', backup_type='biometrics')
+print('\n[SUCCESS] Biometrics Backup created at:\n' + path)
+"
+echo.
+pause
+goto MENU
+
+:CREATE_FULL_BACKUP
+cls
+echo ===============================================================================
+echo   CREATING COMPLETE SYSTEM DISASTER RECOVERY BACKUP
 echo ===============================================================================
 echo.
 echo   Capturing:
 echo   - SQLite Database (smart_entry.db) via live backup API
-echo   - Enrolled Student Face Crops (face_data/)
-echo   - SFace Deep Biometric Embeddings & Model Metadata (recognition/models/)
-echo   - Stranger Security Alert Snapshots (static/snapshots/)
+echo   - Enrolled student facial crops (face_data/)
+echo   - SFace deep biometric embeddings ^& models
+echo   - Stranger security alert snapshots
 echo.
 "%PYTHON_CMD%" -c "
-import sys
 from tools.backup_restore import create_system_backup
-path = create_system_backup(description='Offline Windows Tool Backup')
-print('\n[SUCCESS] Backup created at: ' + path)
+path = create_system_backup(description='Offline Tool Full System Backup', backup_type='full')
+print('\n[SUCCESS] Full System Backup created at:\n' + path)
 "
-echo.
-set /p "COPY_DESK=Copy this backup to your Desktop for safe keeping? (Y/N): "
-if /i "%COPY_DESK%"=="Y" (
-    "%PYTHON_CMD%" -c "
-import os, shutil
-from tools.backup_restore import list_backups
-backups = list_backups()
-if backups:
-    src = backups[0]['path']
-    desktop = os.path.join(os.environ['USERPROFILE'], 'Desktop')
-    dst = os.path.join(desktop, backups[0]['filename'])
-    shutil.copy2(src, dst)
-    print('[SUCCESS] Copied to Desktop: ' + dst)
-"
-)
 echo.
 pause
 goto MENU
@@ -80,12 +110,13 @@ goto MENU
 :RESTORE_BACKUP
 cls
 echo ===============================================================================
-echo   RESTORE SYSTEM FROM BACKUP ARCHIVE
+echo   RESTORE FROM BACKUP ARCHIVE
 echo ===============================================================================
 echo.
-echo   WARNING: Restoring will overwrite existing patron profiles, attendance
-echo   logs, and SFace deep facial embeddings with the backup contents.
-echo   (An automatic pre-restore safety snapshot will be created before proceeding)
+echo   The restore engine automatically detects whether your backup archive is:
+echo   - System Logs: Restores logs/alerts only (students remain untouched)
+echo   - Students Biometrics: Restores students/faces only (logs remain untouched)
+echo   - Full System: Restores the complete system state
 echo.
 "%PYTHON_CMD%" -c "
 from tools.backup_restore import list_backups
@@ -95,7 +126,7 @@ if not backups:
 else:
     print('Available Local Backups:')
     for i, b in enumerate(backups, 1):
-        print(f'  [{i}] {b[\"filename\"]} ({b[\"size\"]}) - {b[\"created\"]}')
+        print(f'  [{i}] [{b[\"type_label\"]}] {b[\"filename\"]} ({b[\"size\"]}) - {b[\"created\"]}')
 "
 echo.
 echo   Enter the backup number from above, or drag and drop a .zip file here:
@@ -140,7 +171,7 @@ goto MENU
 :LIST_BACKUPS
 cls
 echo ===============================================================================
-echo   AVAILABLE LOCAL SYSTEM BACKUPS
+echo   AVAILABLE LOCAL BACKUP ARCHIVES
 echo ===============================================================================
 echo.
 "%PYTHON_CMD%" -c "
@@ -151,12 +182,16 @@ if not backups:
 else:
     print(f'Total Snapshots: {len(backups)}\n')
     for b in backups:
-        safety_tag = ' [AUTO SAFETY SNAPSHOT]' if b['is_safety'] else ''
-        print(f\"* {b['filename']}{safety_tag}\")
+        safety_tag = ' [AUTO SAFETY]' if b['is_safety'] else ''
+        print(f\"* [{b['type_label']}] {b['filename']}{safety_tag}\")
         print(f\"  - Created:  {b['created']}\")
         print(f\"  - Size:     {b['size']}\")
-        print(f\"  - Data:     {b['total_students']} Patrons, {b['total_attendance_logs']} Logs, {b['total_security_alerts']} Alerts\")
-        print(f\"  - SFace:    {'128-D Embeddings Active' if b['has_embeddings'] else 'None'}\")
+        if b['backup_type'] == 'biometrics':
+            print(f\"  - Data:     {b['total_students']} Students, {b['total_enrolled_faces']} Face Images\")
+        elif b['backup_type'] == 'system':
+            print(f\"  - Data:     {b['total_attendance_logs']} Attendance Logs, {b['total_security_alerts']} Alerts\")
+        else:
+            print(f\"  - Data:     {b['total_students']} Students, {b['total_attendance_logs']} Logs, {b['total_security_alerts']} Alerts\")
         print(f\"  - Note:     {b['description']}\")
         print()
 "
@@ -168,10 +203,10 @@ goto MENU
 explorer "%PROJECT_ROOT%\backups"
 goto MENU
 
-:LAUNCH_APP
-start "" "%PROJECT_ROOT%\smart_entry_launcher.bat"
+:DECRYPT_TOOL
+cls
+"%PYTHON_CMD%" "%PROJECT_ROOT%\tools\decrypt_tool.py"
 goto MENU
 
 :EXIT_TOOL
 exit /b 0
-

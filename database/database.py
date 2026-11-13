@@ -274,6 +274,24 @@ def get_active_inside_session(student_db_id: int):
     return row
 
 
+def get_today_attendance_log(student_db_id: int):
+    """
+    Check if the student has already logged attendance today.
+    Returns the attendance log row if found, or None.
+    """
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    conn = get_db_connection()
+    row = conn.execute(
+        """SELECT id, student_db_id, date, time_in, time_out, visit_purpose, node
+           FROM attendance_logs
+           WHERE student_db_id = ? AND date = ?
+           ORDER BY id DESC LIMIT 1""",
+        (student_db_id, today_str),
+    ).fetchone()
+    conn.close()
+    return row
+
+
 def log_time_out(student_db_id: int) -> bool:
     """
     Update the open (time_out IS NULL) attendance record for the student.
@@ -480,6 +498,14 @@ def get_alerts(resolved: int = None, limit: int = 200):
     return rows
 
 
+def get_alert_by_id(alert_id: int):
+    """Retrieve a single security alert record by ID."""
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM security_alerts WHERE id = ?", (alert_id,)).fetchone()
+    conn.close()
+    return row
+
+
 def resolve_alert(alert_id: int):
     conn = get_db_connection()
     conn.execute("UPDATE security_alerts SET resolved = 1 WHERE id = ?", (alert_id,))
@@ -518,6 +544,15 @@ def count_unresolved_alerts() -> int:
     conn = get_db_connection()
     n = conn.execute(
         "SELECT COUNT(*) FROM security_alerts WHERE resolved = 0"
+    ).fetchone()[0]
+    conn.close()
+    return n
+
+
+def count_resolved_alerts() -> int:
+    conn = get_db_connection()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM security_alerts WHERE resolved = 1"
     ).fetchone()[0]
     conn.close()
     return n

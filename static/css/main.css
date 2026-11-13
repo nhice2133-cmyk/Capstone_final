@@ -425,3 +425,127 @@ a:hover { color: var(--csu-gold-400); }
 ::-webkit-scrollbar-thumb { background: var(--csu-green-700); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--csu-green-500); }
 
+/* ── CSUCC Athenaeum Custom Confirmation & Alert Dialogs ────────── */
+.csucc-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 14, 8, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 1.5rem;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.csucc-dialog-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.csucc-dialog-card {
+  position: relative;
+  background: linear-gradient(145deg, rgba(8, 30, 20, 0.98), rgba(4, 18, 12, 0.98));
+  border: 1.5px solid var(--border-gold, #f59e0b);
+  border-radius: 20px;
+  padding: 2.2rem 2rem 1.8rem;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.85), 0 0 35px rgba(16, 185, 129, 0.18);
+  transform: translateY(0) scale(1);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.csucc-dialog-overlay.hidden .csucc-dialog-card {
+  transform: translateY(14px) scale(0.95);
+}
+
+.csucc-dialog-icon-wrap {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 1.2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.85rem;
+  position: relative;
+}
+
+.csucc-dialog-icon-wrap.danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1.5px solid rgba(239, 68, 68, 0.45);
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.28);
+}
+
+.csucc-dialog-icon-wrap.warning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1.5px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.28);
+}
+
+.csucc-dialog-icon-wrap.success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1.5px solid rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.28);
+}
+
+.csucc-dialog-icon-wrap.info {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.28);
+}
+
+.csucc-dialog-title {
+  font-family: var(--font-display, "Outfit", sans-serif);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.6rem 0;
+  line-height: 1.25;
+}
+
+.csucc-dialog-message {
+  font-size: 0.92rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  margin: 0 0 1.8rem 0;
+  word-wrap: break-word;
+  white-space: pre-line;
+}
+
+.csucc-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.csucc-dialog-actions .btn {
+  min-width: 120px;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.csucc-dialog-btn-cancel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+}
+
+.csucc-dialog-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+

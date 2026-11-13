@@ -26,27 +26,32 @@ if "%~1"=="--tray" goto direct_tray
 if "%~1"=="--stop" goto stop_server
 if "%~1"=="--server" goto server_only
 if "%~1"=="--reset-admin" goto reset_pw
+if "%~1"=="--decrypt" goto decrypt_tool
+if "%~1"=="--backup" goto backup_tool
 
 :menu
 cls
 echo ===============================================================================
 echo      CARAGA STATE UNIVERSITY CABADBARAN CAMPUS (CSUCC) - ATHENAEUM LIBRARY
-echo      SMART ENTRY: Facial Biometric Attendance & Surveillance Kiosk
+echo      SMART ENTRY: Facial Biometric Attendance ^& Surveillance Kiosk
 echo ===============================================================================
 echo.
 echo   [0] Launch Graphical Setup Wizard (Automated System Installer)
-echo   [1] Start Server & Launch Web App (System Tray / No CMD Window) [Recommended]
-echo   [2] Start Server & Launch Kiosk (System Tray / No CMD Window)
+echo   [1] Start Server ^& Launch Web App (System Tray / No CMD Window) [Recommended]
+echo   [2] Start Server ^& Launch Kiosk (System Tray / No CMD Window)
 echo   [3] Start Server in Foreground CMD (Debug / Console Window)
 echo   [4] Stop Background Server
 echo   [5] Install / Verify Dependencies (Setup for New PC)
 echo   [6] Open Smart Entry Kiosk (Browser)
 echo   [7] Open Admin Dashboard (Browser)
 echo   [8] Emergency Reset Admin Password (Console)
-echo   [9] Exit
+echo   [9] Decrypt Biometric ^& Snapshot Files (.enc -^> .jpg) [Decryption Tool]
+echo   [10] Granular Backup ^& Disaster Recovery (.zip)
+echo   [11] Exit
 echo.
 echo ===============================================================================
-set /p choice="Enter your choice (0-9): "
+set /p choice="Enter your choice (0-11): "
+if defined choice set choice=%choice: =%
 
 if "%choice%"=="0" goto run_wizard
 if "%choice%"=="1" goto tray_admin
@@ -57,16 +62,23 @@ if "%choice%"=="5" goto install_deps
 if "%choice%"=="6" goto open_kiosk
 if "%choice%"=="7" goto open_admin
 if "%choice%"=="8" goto reset_pw
-if "%choice%"=="9" exit /b 0
+if "%choice%"=="9" goto decrypt_tool
+if "%choice%"=="10" goto backup_tool
+if "%choice%"=="11" exit /b 0
 
 echo.
-echo [!] Invalid selection! Please enter a number from 0 to 9.
-timeout /t 2 >nul
+echo [!] Invalid selection! Please enter a number from 0 to 11.
+timeout /t 2 /nobreak >nul 2>nul || ping 127.0.0.1 -n 3 >nul
 goto menu
 
 :run_wizard
 echo.
 echo [*] Launching SMART ENTRY Setup Wizard...
+if exist "%PROJECT_ROOT%\Smart_Entry_Setup.bin" (
+    if not exist "%PROJECT_ROOT%\Smart_Entry_Setup.exe" (
+        ren "%PROJECT_ROOT%\Smart_Entry_Setup.bin" Smart_Entry_Setup.exe >nul 2>nul
+    )
+)
 if exist "%PROJECT_ROOT%\Smart_Entry_Setup.exe" (
     start "" "%PROJECT_ROOT%\Smart_Entry_Setup.exe"
     exit /b 0
@@ -93,7 +105,7 @@ if %ERRORLEVEL% NEQ 0 (
 goto :eof
 
 :check_deps_auto
-"%PYTHON_CMD%" -c "import flask, cv2, numpy, flask_login, flask_bcrypt, PIL" >nul 2>nul
+"%PYTHON_CMD%" -c "import flask, cv2, numpy, flask_login, flask_bcrypt, PIL, cryptography" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     echo [*] Checking and installing missing dependencies...
     "%PYTHON_CMD%" -m pip install -r requirements.txt
@@ -117,7 +129,7 @@ echo [*] Installing required packages from requirements.txt...
 
 echo.
 echo [*] Verifying critical modules...
-"%PYTHON_CMD%" -c "import flask, flask_login, flask_bcrypt, cv2, numpy, PIL; print('  [OK] Core modules verified successfully!')"
+"%PYTHON_CMD%" -c "import flask, flask_login, flask_bcrypt, cv2, numpy, PIL, cryptography; print('  [OK] Core modules verified successfully!')"
 
 echo.
 echo ===============================================================================
@@ -224,4 +236,18 @@ call :check_python
 "%PYTHON_CMD%" reset_admin.py
 echo.
 pause
+goto menu
+
+:decrypt_tool
+cls
+call :check_python
+call :check_deps_auto
+"%PYTHON_CMD%" "%PROJECT_ROOT%\tools\decrypt_tool.py"
+goto menu
+
+:backup_tool
+if exist "%PROJECT_ROOT%\smart_entry_backup.bat" (
+    call "%PROJECT_ROOT%\smart_entry_backup.bat"
+    goto menu
+)
 goto menu

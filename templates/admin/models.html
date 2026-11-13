@@ -1,6 +1,6 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}AI Models &amp; Accuracy — CSUCC Athenaeum SMART ENTRY{% endblock %}
-{% block page_title %}SFace Deep Face Recognition Engine &amp; Calibration{% endblock %}
+{% block page_title %}AI Engine{% endblock %}
 
 {% block admin_content %}
 <!-- Engine Hero Banner -->
@@ -8,21 +8,21 @@
   <div style="padding: 1.5rem 2rem; background: linear-gradient(135deg, rgba(6, 26, 17, 0.96), rgba(15, 45, 30, 0.9)); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
     <div>
       <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-        <span class="badge badge-csucc">DEEP LEARNING BIOMETRIC CORE</span>
-        <span class="badge badge-gold">ACTIVE ENGINE: SFACE (128-D EMBEDDINGS)</span>
+        <span class="badge badge-csucc">AI CORE</span>
+        <span class="badge badge-gold">SFACE ENGINE</span>
         <span style="font-size: 0.8rem; color: #94a3b8;">Version: {{ stats.version }}</span>
       </div>
       <h2 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: #fff; margin: 0;">
-        OpenCV SFace Deep Feature Embeddings (MobileFaceNet CNN)
+        OpenCV SFace Face Recognition
       </h2>
       <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-        High-precision facial biometric verification utilizing 128-dimensional metric embeddings, normalized cosine similarity, and zero stranger false acceptance.
+        128-dimensional biometric embeddings and cosine similarity.
       </p>
     </div>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
       <form id="retrainForm" action="{{ url_for('models.retrain') }}" method="POST" style="margin: 0;">
         <button type="submit" id="btnRetrain" class="btn btn-primary btn-sm">
-          <span id="btnRetrainIcon">🔄</span> <span id="btnRetrainText">Update Face Embeddings</span>
+          <span id="btnRetrainIcon">🔄</span> <span id="btnRetrainText">Retrain Model</span>
         </button>
       </form>
     </div>
@@ -34,22 +34,22 @@
   <div class="stat-card green">
     <div class="stat-icon">👥</div>
     <div class="stat-value">{{ stats.num_active_students }}</div>
-    <div class="stat-label">Active Enrolled Students</div>
+    <div class="stat-label">Active Students</div>
   </div>
   <div class="stat-card blue">
     <div class="stat-icon">📷</div>
     <div class="stat-value">{{ stats.total_images }}</div>
-    <div class="stat-label">Valid Face Vectors</div>
+    <div class="stat-label">Face Vectors</div>
   </div>
   <div class="stat-card purple">
     <div class="stat-icon">🎯</div>
     <div class="stat-value">{{ stats.sface_threshold }}</div>
-    <div class="stat-label">Cosine Sim Threshold</div>
+    <div class="stat-label">Threshold</div>
   </div>
   <div class="stat-card gold">
     <div class="stat-icon">⚡</div>
     <div class="stat-value">97.5%</div>
-    <div class="stat-label">Validated Accuracy</div>
+    <div class="stat-label">Accuracy</div>
   </div>
 </div>
 
@@ -59,7 +59,7 @@
   <!-- Card 1: Architecture Specifications -->
   <div class="card">
     <div class="card-header">
-      <span>🧠 Deep Neural Network Architecture</span>
+      <span>🧠 AI Architecture</span>
       <span class="badge badge-csucc">OPENCV DNN</span>
     </div>
     <div class="card-body">
@@ -83,25 +83,25 @@
   <!-- Card 2: Threshold Calibration -->
   <div class="card">
     <div class="card-header">
-      <span>🎯 Cosine Similarity Threshold Calibration</span>
-      <span class="badge badge-gold">SECURITY CONTROLS</span>
+      <span>🎯 Threshold Calibration</span>
+      <span class="badge badge-gold">SECURITY</span>
     </div>
     <div class="card-body">
       <form action="{{ url_for('models.set_threshold') }}" method="POST">
         <input type="hidden" name="model_type" value="sface" />
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <label style="font-weight: 700; color: #fff; font-size: 0.9rem;">SFace Cosine Threshold</label>
-          <span style="font-size: 0.8rem; color: #38bdf8;">Recommended: 0.363 (Optimal)</span>
+          <span style="font-size: 0.8rem; color: #38bdf8;">Default: 0.363</span>
         </div>
         <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">
-          Cosine Similarity: <strong>Higher is stricter</strong>. Faces with cosine similarity &lt; threshold are rejected as Unknown Stranger and snapshotted.
+          Higher is stricter. Faces below threshold trigger stranger alerts.
         </p>
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
           <input type="number" step="0.001" min="0.100" max="0.950" name="threshold" value="{{ stats.sface_threshold }}" style="width: 120px; padding: 8px 12px; background: rgba(15,23,42,0.6); border: 1px solid var(--border-subtle); border-radius: 6px; color: #fff; font-weight: 700;" required />
-          <button type="submit" class="btn btn-primary btn-sm">Save Threshold</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
         </div>
         <div style="font-size: 0.75rem; color: #64748b; line-height: 1.4;">
-          * Range 0.360–0.400 provides ideal balance of 97.5% rank-1 accuracy with 0.0% stranger false acceptance.
+          * Range 0.360–0.400 provides ideal balance of 97.5% accuracy with 0.0% stranger false acceptance.
         </div>
       </form>
     </div>
@@ -112,9 +112,9 @@
 <div class="card mb-4">
   <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
     <div>
-      <span>📊 Empirical Model Validation &amp; Performance Verification</span>
+      <span>📊 Performance Validation</span>
       <div style="font-size: 0.78rem; color: #94a3b8; font-weight: normal; margin-top: 2px;">
-        Evaluated on 100 independent test face samples (registered patrons + unregistered strangers) with zero data leakage.
+        Tested on registered users and unregistered strangers.
       </div>
     </div>
     <form action="{{ url_for('models.run_evaluation') }}" method="POST" style="margin: 0;">

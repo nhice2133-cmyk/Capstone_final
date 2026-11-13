@@ -15,7 +15,7 @@
       </div>
       <div class="sidebar-brand">
         <span class="brand-name">CSUCC ATHENAEUM</span>
-        <span class="brand-sub">Smart Entry Admin</span>
+        <span class="brand-sub">Smart Entry</span>
       </div>
     </div>
 
@@ -24,43 +24,41 @@
     </div>
 
     <nav class="sidebar-nav">
-      <div class="nav-section-label">OVERVIEW</div>
+      <div class="nav-section-label">MAIN</div>
       <a href="{{ url_for('dashboard.home') }}" class="nav-item {% if request.endpoint == 'dashboard.home' %}active{% endif %}">
         <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
       </a>
 
-      <div class="nav-section-label">MANAGEMENT</div>
+      <div class="nav-section-label">USERS</div>
       <a href="{{ url_for('students.enroll_page') }}" class="nav-item {% if request.endpoint in ['students.enroll_page'] %}active{% endif %}">
-        <span class="nav-icon">📷</span><span class="nav-label">Enroll User / Guest</span>
+        <span class="nav-icon">📷</span><span class="nav-label">Enroll User</span>
       </a>
       <a href="{{ url_for('students.list_students') }}" class="nav-item {% if request.endpoint == 'students.list_students' %}active{% endif %}">
-        <span class="nav-icon">👥</span><span class="nav-label">Enrolled Users</span>
+        <span class="nav-icon">👥</span><span class="nav-label">User List</span>
       </a>
 
-      <div class="nav-section-label">RECORDS &amp; SURVEILLANCE</div>
+      <div class="nav-section-label">LOGS &amp; ALERTS</div>
       <a href="{{ url_for('attendance.attendance_page') }}" class="nav-item {% if request.endpoint == 'attendance.attendance_page' %}active{% endif %}">
-        <span class="nav-icon">📋</span><span class="nav-label">Attendance Logs</span>
+        <span class="nav-icon">📋</span><span class="nav-label">Attendance</span>
       </a>
       <a href="{{ url_for('kiosk.alerts_page') }}" class="nav-item {% if request.endpoint == 'kiosk.alerts_page' %}active{% endif %}">
         <span class="nav-icon">🚨</span>
-        <span class="nav-label">Security Alerts</span>
+        <span class="nav-label">Alerts</span>
         {% set alert_count = pending_alerts_count | default(0) %}
-        {% if alert_count > 0 %}
-          <span class="badge badge-danger sidebar-alert-pill">{{ alert_count }}</span>
-        {% endif %}
+        <span class="badge badge-danger sidebar-alert-pill" id="sidebarAlertBadge" style="{{ 'display:none;' if alert_count == 0 else '' }}">{{ alert_count }}</span>
       </a>
       <a href="{{ url_for('attendance.analytics_page') }}" class="nav-item {% if request.endpoint == 'attendance.analytics_page' %}active{% endif %}">
-        <span class="nav-icon">📈</span><span class="nav-label">Analytics &amp; Trends</span>
+        <span class="nav-icon">📈</span><span class="nav-label">Analytics</span>
       </a>
 
-      <div class="nav-section-label">KIOSK TERMINAL</div>
+      <div class="nav-section-label">KIOSK</div>
       <a href="{{ url_for('kiosk.kiosk_entry') }}" class="nav-item nav-kiosk-link" target="_blank">
-        <span class="nav-icon">🏛️</span><span class="nav-label">Smart Entry Kiosk</span>
+        <span class="nav-icon">🏛️</span><span class="nav-label">Entry Kiosk</span>
       </a>
 
-      <div class="nav-section-label">SYSTEM &amp; AI MODELS</div>
+      <div class="nav-section-label">SYSTEM</div>
       <a href="{{ url_for('models.models_dashboard') }}" class="nav-item {% if request.endpoint == 'models.models_dashboard' %}active{% endif %}">
-        <span class="nav-icon">🧠</span><span class="nav-label">AI Models &amp; Accuracy</span>
+        <span class="nav-icon">🧠</span><span class="nav-label">AI Engine</span>
       </a>
     </nav>
   </aside>
@@ -72,7 +70,7 @@
       <div class="topbar-left">
         <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">☰</button>
         <div class="topbar-title-block">
-          <div class="topbar-facility">CARAGA STATE UNIVERSITY CABADBARAN CAMPUS</div>
+          <div class="topbar-facility">CSUCC ATHENAEUM LIBRARY</div>
           <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
         </div>
       </div>
@@ -111,7 +109,7 @@
               <span class="dropdown-item-icon">💾</span>
               <div class="dropdown-item-text">
                 <span class="dropdown-item-title">Backup &amp; Restore</span>
-                <span class="dropdown-item-desc">System snapshots &amp; recovery</span>
+                <span class="dropdown-item-desc">Snapshots &amp; recovery</span>
               </div>
             </a>
             
@@ -121,7 +119,7 @@
               <span class="dropdown-item-icon">🔒</span>
               <div class="dropdown-item-text">
                 <span class="dropdown-item-title">Change Password</span>
-                <span class="dropdown-item-desc">Update account credentials</span>
+                <span class="dropdown-item-desc">Update credentials</span>
               </div>
             </a>
             
@@ -131,7 +129,7 @@
               <span class="dropdown-item-icon">🚪</span>
               <div class="dropdown-item-text">
                 <span class="dropdown-item-title">Sign Out</span>
-                <span class="dropdown-item-desc">End active session</span>
+                <span class="dropdown-item-desc">End session</span>
               </div>
             </a>
           </div>
@@ -153,6 +151,7 @@
   </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/csucc-dialog.js') }}"></script>
 <script>
   // Clock
   function updateClock() {

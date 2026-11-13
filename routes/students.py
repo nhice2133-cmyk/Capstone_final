@@ -16,6 +16,7 @@ from flask_login import login_required
 from database import database as db
 from recognition.training import train_model
 from recognition.face_detection import FaceDetector
+from recognition.image_crypto import save_encrypted_image, load_encrypted_image
 from config import Config, sanitize_name_for_filesystem
 
 students_bp = Blueprint("students", __name__)
@@ -59,6 +60,11 @@ def delete_student(student_db_id):
         
     # 3. Retrain to update model and remove student from label mapping
     train_result = train_model()
+    try:
+        from routes.kiosk import _reload_recognizer
+        _reload_recognizer()
+    except Exception:
+        pass
     msg = train_result.get("message", "") if isinstance(train_result, dict) else ""
     flash(f"Student '{name}' deleted successfully. {msg}".strip(), "success")
     return redirect(url_for("students.list_students"))
@@ -74,6 +80,11 @@ def toggle_student(student_db_id):
         db.update_student_status(student_db_id, new_status)
         # Retrain to exclude/include in active label mapping
         train_result = train_model()
+        try:
+            from routes.kiosk import _reload_recognizer
+            _reload_recognizer()
+        except Exception:
+            pass
         msg = train_result.get("message", "") if isinstance(train_result, dict) else ""
         flash(
             f"Student status updated to '{new_status}'. {msg}".strip(),
@@ -253,7 +264,7 @@ def capture_face():
     # If restarting capture at index 0, clean out previously captured frames in staging
     if img_index == 0:
         for f in os.listdir(stage_dir):
-            if f.startswith("img_") and f.endswith(".jpg"):
+            if f.startswith("img_") and (f.endswith(".jpg") or f.endswith(".enc")):
                 try:
                     os.remove(os.path.join(stage_dir, f))
                 except Exception:
@@ -310,22 +321,25 @@ def capture_face():
 
     # 5. Check frame difference against previous captured image in staging
     if img_index > 0:
-        prev_img_path = os.path.join(stage_dir, f"img_{img_index - 1:03d}.jpg")
+        prev_img_path = os.path.join(stage_dir, f"img_{img_index - 1:03d}.enc")
+        if not os.path.exists(prev_img_path):
+            prev_img_path = os.path.join(stage_dir, f"img_{img_index - 1:03d}.jpg")
         if os.path.exists(prev_img_path):
-            prev_face = cv2.imread(prev_img_path)
-            diff_score = FaceDetector.calculate_frame_difference(face_bgr_roi, prev_face)
-            if diff_score < Config.ENROLLMENT_FRAME_DIFF_THRESHOLD:
-                return jsonify({
-                    "success": False,
-                    "message": "Face position too similar to previous frame. Please move slightly or adjust expression.",
-                    "error_type": "duplicate_frame",
-                    "diff_score": round(diff_score, 2),
-                })
+            prev_face = load_encrypted_image(prev_img_path)
+            if prev_face is not None:
+                diff_score = FaceDetector.calculate_frame_difference(face_bgr_roi, prev_face)
+                if diff_score < Config.ENROLLMENT_FRAME_DIFF_THRESHOLD:
+                    return jsonify({
+                        "success": False,
+                        "message": "Face position too similar to previous frame. Please move slightly or adjust expression.",
+                        "error_type": "duplicate_frame",
+                        "diff_score": round(diff_score, 2),
+                    })
 
-    # Save standardized 200x200 BGR face image in staging folder
+    # Save standardized 200x200 BGR face image in staging folder (encrypted at rest)
     face_roi_resized = cv2.resize(face_bgr_roi, (200, 200))
-    img_path = os.path.join(stage_dir, f"img_{img_index:03d}.jpg")
-    cv2.imwrite(img_path, face_roi_resized)
+    img_path = os.path.join(stage_dir, f"img_{img_index:03d}.enc")
+    save_encrypted_image(img_path, face_roi_resized)
 
     # 6. Pose guidance distribution (20 images total):
     # 0..4 (1-5): Frontal
@@ -405,7 +419,7 @@ def trigger_training():
     # 1. Verify that all 20 images have been captured
     captured_files = sorted([
         f for f in os.listdir(stage_dir)
-        if f.startswith("img_") and f.endswith(".jpg")
+        if f.startswith("img_") and (f.endswith(".enc") or f.endswith(".jpg"))
     ])
     required_count = Config.ENROLLMENT_IMAGE_COUNT
 
@@ -427,22 +441,32 @@ def trigger_training():
     # 3. ONLY NOW insert the student into SQLite!
     new_student_db_id = db.create_student(full_name, student_id, program)
 
-    # 4. Move captured images from staging to permanent face_data/<registered_name>
+    # 4. Move captured images from staging to permanent face_data/<registered_name> (encrypted at rest)
     safe_name = sanitize_name_for_filesystem(full_name)
     permanent_dir = os.path.join(Config.FACE_DATA_DIR, safe_name)
     os.makedirs(permanent_dir, exist_ok=True)
 
     for idx, f in enumerate(captured_files):
         src = os.path.join(stage_dir, f)
-        dest_filename = f"{safe_name}_{idx:03d}.jpg"
+        dest_filename = f"{safe_name}_{idx:03d}.enc"
         dst = os.path.join(permanent_dir, dest_filename)
-        shutil.copy2(src, dst)
+        if f.endswith(".enc"):
+            shutil.copy2(src, dst)
+        else:
+            with open(src, "rb") as fp:
+                raw_bytes = fp.read()
+            save_encrypted_image(dst, raw_bytes)
 
     # 5. Clean up staging directory
     shutil.rmtree(stage_dir, ignore_errors=True)
 
     # 6. Retrain active models
     train_result = train_model()
+    try:
+        from routes.kiosk import _reload_recognizer
+        _reload_recognizer()
+    except Exception:
+        pass
 
     user_label = "Guest" if is_guest else "Student"
     return jsonify({

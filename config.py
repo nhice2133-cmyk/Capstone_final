@@ -30,6 +30,10 @@ class Config:
     DEFAULT_SECURITY_QUESTION = "What is the official name of the CSUCC library building?"
     DEFAULT_SECURITY_ANSWER = "Athenaeum"
 
+    # ── Biometric & Snapshot Encryption at Rest ────────────────────────────
+    IMAGE_ENCRYPTION_ENABLED = True
+    IMAGE_ENCRYPTION_SALT = b"CSUCC-ATHENAEUM-BIOMETRIC-ENCRYPTION-SALT-2026"
+
     # ── Database ───────────────────────────────────────────────────────────
     DATABASE_PATH = os.path.join(BASE_DIR, "database", "smart_entry.db")
 
@@ -53,8 +57,8 @@ class Config:
     LABEL_MAP_PATH = os.path.join(MODELS_DIR, "label_map.json")
 
     # SFace Calibrated Cosine Similarity Threshold (higher = closer match; accepts >= threshold)
-    SFACE_THRESHOLD = 0.363
-    RECOGNITION_THRESHOLD = 0.363
+    SFACE_THRESHOLD = 0.380
+    RECOGNITION_THRESHOLD = 0.380
 
     # Images to capture per user during enrollment
     ENROLLMENT_IMAGE_COUNT = 20

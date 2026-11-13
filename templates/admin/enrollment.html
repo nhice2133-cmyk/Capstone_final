@@ -18,19 +18,19 @@
   <div class="enrollment-step" id="step1">
     <div class="card enrollment-card-compact">
       <div class="card-header card-header-compact">
-        <span id="enrollCardHeader" class="card-header-title">📝 Enrollment &amp; Institutional Information</span>
-        <span class="badge badge-csucc">CSUCC REGISTRY</span>
+        <span id="enrollCardHeader" class="card-header-title">📝 User Information</span>
+        <span class="badge badge-csucc">CSUCC</span>
       </div>
       <div class="card-body card-body-compact">
         <!-- User Category Selector -->
         <div class="user-type-pills">
           <button type="button" class="type-pill active" id="btnTypeStudent" data-type="student">
             <span class="pill-icon">🎓</span>
-            <span class="pill-text">Student / Personnel</span>
+            <span class="pill-text">Student / Staff</span>
           </button>
           <button type="button" class="type-pill" id="btnTypeGuest" data-type="guest">
             <span class="pill-icon">👤</span>
-            <span class="pill-text">Guest / Visitor <small class="pill-sub">(No ID Needed)</small></span>
+            <span class="pill-text">Guest <small class="pill-sub">(No ID)</small></span>
           </button>
         </div>
         <input type="hidden" id="userType" name="user_type" value="student" />
@@ -39,14 +39,14 @@
           <!-- Program / Visit Category Dropdown Section (Placed on Top) -->
           <div class="form-group" id="groupProgram">
             <div class="form-label-row">
-              <label for="program" id="lblProgram">Program / Department / Visit Category *</label>
-              <span class="guest-indicator hidden" id="guestModeIndicator">👤 Guest Mode: No ID Needed</span>
+              <label for="program" id="lblProgram">Program / Department *</label>
+              <span class="guest-indicator hidden" id="guestModeIndicator">👤 Guest (No ID)</span>
             </div>
             <div class="combobox-wrap" id="programComboboxWrap">
               <div class="combobox-control">
                 <span class="combobox-prefix-icon">🔍</span>
                 <input type="text" id="program" name="program" class="combobox-input"
-                  placeholder="Search program, department, or select guest category…" autocomplete="off" required />
+                  placeholder="Search program or category..." autocomplete="off" required />
                 <button type="button" class="combobox-clear-btn hidden" id="btnClearProgram"
                   title="Clear selection">✕</button>
                 <button type="button" class="combobox-toggle-btn" id="btnToggleProgram"
@@ -57,8 +57,8 @@
                 <!-- Group 1: Guests & Visitors -->
                 <div class="combobox-group">
                   <div class="combobox-group-header">
-                    <span>👤 GUEST &amp; VISITORS</span>
-                    <span class="group-header-sub">No ID Needed</span>
+                    <span>👤 GUESTS</span>
+                    <span class="group-header-sub">No ID</span>
                   </div>
                   <div class="combobox-item guest-item" data-value="Guest" data-type="guest"
                     data-name="Guest / Athenaeum Visitor" role="option">
@@ -89,7 +89,7 @@
                 <!-- Group 2: CEIT (College of Engineering and Information Technology) -->
                 <div class="combobox-group">
                   <div class="combobox-group-header">
-                    <span>⚙️ CEIT — ENGINEERING &amp; INFO TECHNOLOGY</span>
+                    <span>⚙️ CEIT</span>
                     <span class="group-header-sub">4 Programs</span>
                   </div>
                   <div class="combobox-item" data-value="BSIT" data-type="student"
@@ -133,7 +133,7 @@
                         <!-- Group 3: CITTE (College of Industrial Technology and Teacher Education) -->
                         <div class="combobox-group">
                           <div class="combobox-group-header">
-                            <span>🛠️ CITTE — INDUSTRIAL TECHNOLOGY &amp; TEACHER EDUCATION</span>
+                            <span>🛠️ CITTE</span>
                             <span class="group-header-sub">18 Programs</span>
                           </div>
                           <!-- BS Industrial Technology Majors -->
@@ -321,7 +321,7 @@
                               <!-- Group 4: CTHM (College of Tourism and Hospitality Management) -->
                               <div class="combobox-group">
                                 <div class="combobox-group-header">
-                                  <span>🏨 CTHM — TOURISM &amp; HOSPITALITY MANAGEMENT</span>
+                                  <span>🏨 CTHM</span>
                                   <span class="group-header-sub">3 Programs</span>
                                 </div>
                                 <div class="combobox-item" data-value="BSTM" data-type="student"
@@ -356,7 +356,7 @@
                                 <!-- Group 5: CBA (College of Business and Accountancy) -->
                                 <div class="combobox-group">
                                   <div class="combobox-group-header">
-                                    <span>💼 CBA — BUSINESS &amp; ACCOUNTANCY</span>
+                                    <span>💼 CBA</span>
                                     <span class="group-header-sub">5 Programs</span>
                                   </div>
                                   <div class="combobox-item" data-value="BSA" data-type="student"
@@ -409,8 +409,8 @@
                                 <!-- Group 3: Institutional & Staff -->
                                 <div class="combobox-group">
                                   <div class="combobox-group-header">
-                                    <span>🏛️ INSTITUTIONAL &amp; PERSONNEL</span>
-                                    <span class="group-header-sub">University Staff</span>
+                                    <span>🏛️ PERSONNEL</span>
+                                    <span class="group-header-sub">Staff</span>
                                   </div>
                                   <div class="combobox-item" data-value="Faculty/Employee" data-type="student"
                                     data-name="CSU Faculty & Personnel" role="option">
@@ -473,7 +473,7 @@
                           <!-- Student / Employee ID Field (Hidden in Guest Mode - Max 10 chars) -->
                           <div class="form-group" id="groupStudentId">
                             <div class="form-label-row">
-                              <label for="studentId" id="lblStudentId">Student / Employee ID *</label>
+                              <label for="studentId" id="lblStudentId">Student / Staff ID *</label>
                               <span class="char-counter" id="idCharCounter">0 / 10</span>
                             </div>
                             <div class="input-with-feedback">
@@ -485,7 +485,7 @@
                           </div>
                           <div id="infoMessage" class="form-msg"></div>
                           <button type="submit" class="btn btn-primary btn-save-compact" id="btnSaveInfo">
-                            <span>Save &amp; Proceed to Face Capture</span>
+                            <span>Proceed to Capture</span>
                             <span>→</span>
                           </button>
         </form>
@@ -499,14 +499,14 @@
     <div class="enrollment-capture-layout">
       <!-- Camera -->
       <div class="capture-camera-panel">
-        <div class="camera-label">📷 Live Camera Preview</div>
+        <div class="camera-label">📷 Live Camera</div>
         <video id="enrollVideo" autoplay playsinline muted class="enroll-video"></video>
         <canvas id="enrollCanvas" style="display:none;"></canvas>
         <div class="capture-progress-bar">
           <div class="capture-progress-fill" id="captureProgressFill" style="width:0%"></div>
         </div>
         <div class="capture-count">
-          <span id="captureCount">0</span> / 20 images captured
+          <span id="captureCount">0</span> / 20 Captured
         </div>
         <div id="guidanceBanner" class="guidance-banner">
           🎯 Phase 1/4: Look straight at the camera with a neutral expression (5 frontal images).
@@ -532,7 +532,7 @@
           <div class="preview-prog" id="previewProg">—</div>
         </div>
         <button class="btn btn-primary btn-full" id="btnStartCapture">
-          ▶ Start Auto-Capture
+          ▶ Start Capture
         </button>
         <button class="btn btn-ghost btn-full hidden" id="btnRetake">
           🔄 Retake
@@ -544,19 +544,19 @@
   <!-- Step 3: Training -->
   <div class="enrollment-step hidden" id="step3">
     <div class="card training-card">
-      <div class="card-header">🧠 Finalizing Enrollment &amp; Model Training</div>
+      <div class="card-header">🧠 Model Training</div>
       <div class="card-body text-center">
         <div class="training-animation" id="trainingAnim">
           <div class="training-spinner"></div>
-          <p>Verifying 20 face samples and training recognition model…</p>
-          <small>Registering student into database and updating biometric weights.</small>
+          <p>Training face recognition model...</p>
+          <small>Saving profile and updating biometric weights.</small>
         </div>
         <div class="training-result hidden" id="trainingResult"></div>
         <button class="btn btn-primary hidden" id="btnEnrollAnother" onclick="location.reload()">
-          ➕ Enroll Another User
+          ➕ Enroll Another
         </button>
         <a href="{{ url_for('students.list_students') }}" class="btn btn-ghost hidden" id="btnGoStudents">
-          👥 View All Users
+          👥 View Users
         </a>
       </div>
     </div>

@@ -2,11 +2,10 @@
 SMART ENTRY: A Face Recognition-Based Attendance and Security Surveillance Kiosk System For The CSUCC Library
 System Backup and Disaster Recovery Engine
 ---------------------------------------------------------------------------------------------------------
-Safely captures and restores the entire state of the SMART ENTRY system:
-1. SQLite relational database (patrons, attendance logs, security alerts, administrators, settings)
-2. Enrolled patron facial training crops (face_data/)
-3. SFace 128-D deep feature embeddings, metadata, and label mappings (recognition/models/)
-4. Stranger security alert snapshots (static/snapshots/)
+Provides granular, independent backup and restore capabilities:
+1. System Core & Logs (Attendance logs, security alerts, alert snapshots, admin credentials, settings)
+2. Enrolled Students & Face Biometrics (Student profiles, 20 facial samples in face_data/, SFace embeddings)
+3. Full System Archive (Combined complete disaster recovery)
 """
 
 import os
@@ -61,6 +60,7 @@ def get_system_manifest() -> dict:
         try:
             manifest["db_size_bytes"] = os.path.getsize(Config.DATABASE_PATH)
             conn = sqlite3.connect(Config.DATABASE_PATH)
+            conn.row_factory = sqlite3.Row
             c = conn.cursor()
             
             c.execute("SELECT COUNT(*) FROM students")
@@ -89,96 +89,154 @@ def get_system_manifest() -> dict:
             if "staging" in root:
                 continue
             for f in files:
-                if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                if f.lower().endswith(('.jpg', '.jpeg', '.png', '.enc')):
                     total_crops += 1
         manifest["total_enrolled_faces"] = total_crops
 
     return manifest
 
 
-def create_system_backup(output_path: str = None, description: str = "Manual System Backup") -> str:
+def _dump_table_records(conn, table_name: str) -> list:
+    """Helper to dump table rows as a list of dictionaries."""
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute(f"SELECT * FROM {table_name}")
+    return [dict(row) for row in c.fetchall()]
+
+
+def create_system_backup(output_path: str = None, description: str = None, backup_type: str = "system") -> str:
     """
-    Creates a complete, self-contained backup archive (.zip) of the SMART ENTRY system.
-    Uses SQLite's online backup API to ensure zero database corruption even while the kiosk is live.
-    
+    Creates an independent backup archive (.zip) based on backup_type:
+    - 'system': Attendance logs, security alerts, alert snapshots, admin accounts, and settings.
+    - 'biometrics': Enrolled student records, face_data/ image crops, and SFace model embeddings.
+    - 'full': Complete system snapshot combining both system data and biometrics.
+
     Returns:
         str: Absolute path to the generated .zip backup file.
     """
+    backup_type = (backup_type or "system").lower().strip()
+    if backup_type not in ["system", "biometrics", "full"]:
+        backup_type = "system"
+
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     if not output_path:
-        filename = f"smart_entry_backup_{timestamp}.zip"
+        if backup_type == "biometrics":
+            prefix = "smart_entry_biometrics"
+            default_desc = "Enrolled Students & Biometrics Archive"
+        elif backup_type == "system":
+            prefix = "smart_entry_system"
+            default_desc = "System Core & Logs Archive"
+        else:
+            prefix = "smart_entry_full"
+            default_desc = "Full System Disaster Recovery Archive"
+
+        filename = f"{prefix}_backup_{timestamp}.zip"
         output_path = os.path.join(BACKUPS_DIR, filename)
+    else:
+        default_desc = f"{backup_type.capitalize()} Archive"
+
+    if not description:
+        description = default_desc
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
     manifest = get_system_manifest()
+    manifest["backup_type"] = backup_type
     manifest["backup_description"] = description
     manifest["archive_filename"] = os.path.basename(output_path)
+    manifest["created_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 1. Safely backup the SQLite database via sqlite3 backup API
-    temp_db_copy = os.path.join(BACKUPS_DIR, f"temp_db_{timestamp}.sqlite")
-    if os.path.exists(Config.DATABASE_PATH):
-        src_conn = sqlite3.connect(Config.DATABASE_PATH)
-        dst_conn = sqlite3.connect(temp_db_copy)
-        with dst_conn:
-            src_conn.backup(dst_conn, pages=100)
-        dst_conn.close()
-        src_conn.close()
+    # Connect to live SQLite database
+    conn = sqlite3.connect(Config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
 
-    # 2. Package everything into the ZIP archive
     temp_zip = output_path + ".tmp"
     with zipfile.ZipFile(temp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        # Write manifest
-        zf.writestr("backup_manifest.json", json.dumps(manifest, indent=2))
+        
+        # ── 1. BIOMETRICS BACKUP (Students & Face Images) ───────────────────
+        if backup_type in ["biometrics", "full"]:
+            # Dump students table
+            students_data = _dump_table_records(conn, "students")
+            zf.writestr("database/students_data.json", json.dumps(students_data, indent=2))
+            manifest["total_students"] = len(students_data)
 
-        # Write clean DB
-        if os.path.exists(temp_db_copy):
-            zf.write(temp_db_copy, arcname="database/smart_entry.db")
-
-        # Write face_data/
-        if os.path.exists(Config.FACE_DATA_DIR):
-            for root, dirs, files in os.walk(Config.FACE_DATA_DIR):
-                for f in files:
-                    full_p = os.path.join(root, f)
-                    rel_p = os.path.relpath(full_p, BASE_DIR)
-                    try:
-                        zf.write(full_p, arcname=rel_p.replace("\\", "/"))
-                    except Exception as e:
-                        print(f"[BACKUP WARN] Could not archive {rel_p}: {e}")
-
-        # Write recognition/models/
-        model_files = [
-            Config.SFACE_EMBEDDINGS_PATH,
-            Config.MODEL_METADATA_PATH,
-            Config.LABEL_MAP_PATH
-        ]
-        for mf in model_files:
-            if os.path.exists(mf):
-                rel_p = os.path.relpath(mf, BASE_DIR)
-                zf.write(mf, arcname=rel_p.replace("\\", "/"))
-
-        # Write static/snapshots/
-        if os.path.exists(Config.ALERTS_SNAPSHOT_DIR):
-            for root, dirs, files in os.walk(Config.ALERTS_SNAPSHOT_DIR):
-                for f in files:
-                    if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+            # Archive face_data/
+            enrolled_crops_count = 0
+            if os.path.exists(Config.FACE_DATA_DIR):
+                for root, dirs, files in os.walk(Config.FACE_DATA_DIR):
+                    if "staging" in root:
+                        continue
+                    for f in files:
                         full_p = os.path.join(root, f)
                         rel_p = os.path.relpath(full_p, BASE_DIR)
                         try:
                             zf.write(full_p, arcname=rel_p.replace("\\", "/"))
+                            if f.lower().endswith(('.enc', '.jpg', '.jpeg', '.png')):
+                                enrolled_crops_count += 1
                         except Exception as e:
-                            print(f"[BACKUP WARN] Could not archive snapshot {rel_p}: {e}")
+                            print(f"[BACKUP WARN] Could not archive face file {rel_p}: {e}")
+            manifest["total_enrolled_faces"] = enrolled_crops_count
 
-    # Remove temp DB copy
-    if os.path.exists(temp_db_copy):
-        try:
-            os.remove(temp_db_copy)
-        except Exception:
-            pass
+            # Archive recognition/models/
+            model_files = [
+                Config.SFACE_EMBEDDINGS_PATH,
+                Config.MODEL_METADATA_PATH,
+                Config.LABEL_MAP_PATH
+            ]
+            for mf in model_files:
+                if os.path.exists(mf):
+                    rel_p = os.path.relpath(mf, BASE_DIR)
+                    zf.write(mf, arcname=rel_p.replace("\\", "/"))
+
+        # ── 2. SYSTEM DATA BACKUP (Logs, Alerts, Admins, Snapshots) ─────────
+        if backup_type in ["system", "full"]:
+            system_data = {
+                "attendance_logs": _dump_table_records(conn, "attendance_logs"),
+                "security_alerts": _dump_table_records(conn, "security_alerts"),
+                "admins": _dump_table_records(conn, "admins"),
+            }
+            zf.writestr("database/system_data.json", json.dumps(system_data, indent=2))
+            manifest["total_attendance_logs"] = len(system_data["attendance_logs"])
+            manifest["total_security_alerts"] = len(system_data["security_alerts"])
+            manifest["total_admins"] = len(system_data["admins"])
+
+            # Archive static/snapshots/
+            if os.path.exists(Config.ALERTS_SNAPSHOT_DIR):
+                for root, dirs, files in os.walk(Config.ALERTS_SNAPSHOT_DIR):
+                    for f in files:
+                        if f.lower().endswith(('.jpg', '.jpeg', '.png', '.enc')):
+                            full_p = os.path.join(root, f)
+                            rel_p = os.path.relpath(full_p, BASE_DIR)
+                            try:
+                                zf.write(full_p, arcname=rel_p.replace("\\", "/"))
+                            except Exception as e:
+                                print(f"[BACKUP WARN] Could not archive snapshot {rel_p}: {e}")
+
+        # ── 3. FULL BACKUP EXTRAS ───────────────────────────────────────────
+        if backup_type == "full":
+            temp_db_copy = os.path.join(BACKUPS_DIR, f"temp_db_{timestamp}.sqlite")
+            try:
+                dst_conn = sqlite3.connect(temp_db_copy)
+                with dst_conn:
+                    conn.backup(dst_conn, pages=100)
+                dst_conn.close()
+                if os.path.exists(temp_db_copy):
+                    zf.write(temp_db_copy, arcname="database/smart_entry.db")
+                    os.remove(temp_db_copy)
+            except Exception as e:
+                print(f"[BACKUP WARN] Could not package raw database file: {e}")
+
+        # Write manifest
+        zf.writestr("backup_manifest.json", json.dumps(manifest, indent=2))
+
+    conn.close()
 
     # Finalize ZIP
     if os.path.exists(output_path):
-        os.remove(output_path)
+        try:
+            os.remove(output_path)
+        except Exception:
+            pass
     os.rename(temp_zip, output_path)
 
     return output_path
@@ -186,24 +244,26 @@ def create_system_backup(output_path: str = None, description: str = "Manual Sys
 
 def validate_backup_file(zip_path_or_file) -> tuple:
     """
-    Validates that a given file is a legitimate SMART ENTRY backup archive.
+    Validates that a given file is a legitimate SMART ENTRY backup archive and detects its type.
     
     Returns:
-        (is_valid: bool, error_message: str, manifest: dict)
+        (is_valid: bool, error_message: str, manifest: dict, detected_type: str)
     """
     try:
         with zipfile.ZipFile(zip_path_or_file, "r") as zf:
-            namelist = zf.namelist()
+            namelist = [n.replace("\\", "/") for n in zf.namelist()]
             
-            # Must contain at least database/smart_entry.db or backup_manifest.json
-            has_db = any("database/smart_entry.db" in name.replace("\\", "/") for name in namelist)
+            has_db = "database/smart_entry.db" in namelist
+            has_system = "database/system_data.json" in namelist
+            has_students = "database/students_data.json" in namelist
             has_manifest = "backup_manifest.json" in namelist
 
-            if not has_db and not has_manifest:
+            if not (has_db or has_system or has_students or has_manifest):
                 return (
                     False, 
-                    "Invalid archive: Missing required database or backup_manifest.json.", 
-                    {}
+                    "Invalid archive: Missing required database or manifest.", 
+                    {},
+                    "unknown"
                 )
 
             manifest = {}
@@ -214,81 +274,206 @@ def validate_backup_file(zip_path_or_file) -> tuple:
                 except Exception:
                     pass
 
-            return (True, "Valid SMART ENTRY backup archive.", manifest)
+            # Detect type
+            detected_type = manifest.get("backup_type")
+            if not detected_type:
+                if has_students and not has_system and not has_db:
+                    detected_type = "biometrics"
+                elif has_system and not has_students and not has_db:
+                    detected_type = "system"
+                else:
+                    detected_type = "full"
+
+            return (True, "Valid SMART ENTRY backup archive.", manifest, detected_type)
     except zipfile.BadZipFile:
-        return (False, "The provided file is not a valid or readable ZIP archive.", {})
+        return (False, "The provided file is not a valid or readable ZIP archive.", {}, "unknown")
     except Exception as e:
-        return (False, f"Verification error: {str(e)}", {})
+        return (False, f"Verification error: {str(e)}", {}, "unknown")
 
 
-def restore_system_backup(zip_path_or_file, create_safety_snapshot: bool = True) -> tuple:
+def restore_system_backup(zip_path_or_file, create_safety_snapshot: bool = True, force_type: str = None) -> tuple:
     """
-    Restores the SMART ENTRY system from a verified backup archive.
-    
-    1. Optionally creates an automatic pre-restore safety snapshot of current data.
-    2. Overwrites database/smart_entry.db.
-    3. Overwrites/restores face_data/ training samples.
-    4. Overwrites/restores recognition/models/ embeddings and metadata.
-    5. Overwrites/restores static/snapshots/ security alerts.
-    6. Reloads live recognizer cache in the running web application if accessible.
-    
+    Selectively and safely restores from a backup archive:
+    - If backup_type is 'system':
+        Restores attendance logs, security alerts, and snapshots.
+        PRESERVES existing enrolled students and face images untouched!
+    - If backup_type is 'biometrics':
+        Restores enrolled students, face_data/ image crops, and models.
+        PRESERVES existing attendance logs, alerts, and admin accounts untouched!
+    - If backup_type is 'full' (or legacy):
+        Restores complete system state.
+        
     Returns:
         (success: bool, message: str)
     """
-    is_valid, err_msg, manifest = validate_backup_file(zip_path_or_file)
+    is_valid, err_msg, manifest, detected_type = validate_backup_file(zip_path_or_file)
     if not is_valid:
         return (False, err_msg)
 
-    # 1. Automatic safety snapshot before destructive overwrite
+    restore_type = (force_type or detected_type or "full").lower()
+
+    # 1. Automatic safety snapshot before destructive changes
     if create_safety_snapshot:
         try:
             safety_ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            safety_path = os.path.join(BACKUPS_DIR, f"pre_restore_safety_{safety_ts}.zip")
-            create_system_backup(output_path=safety_path, description="Auto-generated safety snapshot before restore")
+            safety_path = os.path.join(BACKUPS_DIR, f"pre_restore_{restore_type}_safety_{safety_ts}.zip")
+            create_system_backup(output_path=safety_path, description=f"Safety snapshot before restoring {restore_type}", backup_type=restore_type)
         except Exception as e:
             print(f"[WARN] Could not create pre-restore safety snapshot: {e}")
 
-    # 2. Extract contents
     try:
         with zipfile.ZipFile(zip_path_or_file, "r") as zf:
-            for member in zf.infolist():
-                filename = member.filename.replace("\\", "/")
-                
-                # Prevent directory traversal attacks
-                if filename.startswith("/") or ".." in filename:
-                    continue
+            namelist = [m.filename.replace("\\", "/") for m in zf.infolist()]
 
-                # Target extraction path
-                target_path = os.path.join(BASE_DIR, filename)
-                
-                if member.is_dir():
-                    os.makedirs(target_path, exist_ok=True)
-                    continue
+            conn = sqlite3.connect(Config.DATABASE_PATH)
+            conn.execute("PRAGMA foreign_keys = OFF;")
 
-                os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                with zf.open(member) as source, open(target_path, "wb") as target:
-                    shutil.copyfileobj(source, target)
+            # ── A. RESTORE BIOMETRICS (Students & Face Images) ──────────────
+            if restore_type in ["biometrics", "full"]:
+                # 1. Restore face_data/ files
+                for member in zf.infolist():
+                    fname = member.filename.replace("\\", "/")
+                    if fname.startswith("/") or ".." in fname:
+                        continue
+                    if fname.startswith("face_data/") or fname.startswith("recognition/models/"):
+                        target_p = os.path.join(BASE_DIR, fname)
+                        if member.is_dir():
+                            os.makedirs(target_p, exist_ok=True)
+                        else:
+                            os.makedirs(os.path.dirname(target_p), exist_ok=True)
+                            with zf.open(member) as src, open(target_p, "wb") as dst:
+                                shutil.copyfileobj(src, dst)
 
-        # 3. Reload in-memory recognizer if kiosk routes module is loaded
+                # 2. Restore students table in SQLite
+                if "database/students_data.json" in namelist:
+                    students_json = zf.read("database/students_data.json").decode("utf-8")
+                    students_list = json.loads(students_json)
+                    with conn:
+                        conn.execute("DELETE FROM students;")
+                        for s in students_list:
+                            conn.execute("""
+                                INSERT INTO students (id, full_name, student_id, program, status, enrolled_at)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (
+                                s.get("id"),
+                                s.get("full_name"),
+                                s.get("student_id"),
+                                s.get("program", "BSIT"),
+                                s.get("status", "active"),
+                                s.get("enrolled_at", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            ))
+
+            # ── B. RESTORE SYSTEM DATA (Logs, Alerts, Admins, Snapshots) ────
+            if restore_type in ["system", "full"]:
+                # 1. Restore static/snapshots/ files
+                for member in zf.infolist():
+                    fname = member.filename.replace("\\", "/")
+                    if fname.startswith("/") or ".." in fname:
+                        continue
+                    if fname.startswith("static/snapshots/"):
+                        target_p = os.path.join(BASE_DIR, fname)
+                        if member.is_dir():
+                            os.makedirs(target_p, exist_ok=True)
+                        else:
+                            os.makedirs(os.path.dirname(target_p), exist_ok=True)
+                            with zf.open(member) as src, open(target_p, "wb") as dst:
+                                shutil.copyfileobj(src, dst)
+
+                # 2. Restore system tables in SQLite
+                if "database/system_data.json" in namelist:
+                    sys_json = zf.read("database/system_data.json").decode("utf-8")
+                    sys_data = json.loads(sys_json)
+                    with conn:
+                        # Restore attendance logs
+                        conn.execute("DELETE FROM attendance_logs;")
+                        for log in sys_data.get("attendance_logs", []):
+                            conn.execute("""
+                                INSERT INTO attendance_logs (id, student_db_id, date, time_in, time_out, visit_purpose, node)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                log.get("id"),
+                                log.get("student_db_id"),
+                                log.get("date"),
+                                log.get("time_in"),
+                                log.get("time_out"),
+                                log.get("visit_purpose"),
+                                log.get("node", "entry")
+                            ))
+
+                        # Restore security alerts
+                        conn.execute("DELETE FROM security_alerts;")
+                        for alert in sys_data.get("security_alerts", []):
+                            conn.execute("""
+                                INSERT INTO security_alerts (id, detected_at, snapshot_path, confidence_score, resolved)
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (
+                                alert.get("id"),
+                                alert.get("detected_at"),
+                                alert.get("snapshot_path"),
+                                alert.get("confidence_score"),
+                                alert.get("resolved", 0)
+                            ))
+
+                        # Restore admins (if present)
+                        admins_list = sys_data.get("admins", [])
+                        if admins_list:
+                            conn.execute("DELETE FROM admins;")
+                            for adm in admins_list:
+                                conn.execute("""
+                                    INSERT INTO admins (id, username, password_hash, created_at, security_question, security_answer_hash, recovery_key_hash)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    adm.get("id"),
+                                    adm.get("username"),
+                                    adm.get("password_hash"),
+                                    adm.get("created_at"),
+                                    adm.get("security_question"),
+                                    adm.get("security_answer_hash"),
+                                    adm.get("recovery_key_hash")
+                                ))
+
+            # ── C. LEGACY FULL RESTORE FALLBACK ─────────────────────────────
+            if restore_type == "full" and "database/smart_entry.db" in namelist and "database/system_data.json" not in namelist:
+                # Legacy full database archive extraction
+                conn.close()
+                target_db = Config.DATABASE_PATH
+                with zf.open("database/smart_entry.db") as src, open(target_db, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                conn = sqlite3.connect(Config.DATABASE_PATH)
+
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.close()
+
+        # Reload live model recognizer in application memory
         try:
             from routes.kiosk import _reload_recognizer
             _reload_recognizer()
-        except Exception as e:
+        except Exception:
             pass
 
-        restored_students = manifest.get("total_students", "enrolled")
-        restored_logs = manifest.get("total_attendance_logs", "attendance")
-        return (
-            True, 
-            f"System successfully restored! Active state: {restored_students} patron(s), {restored_logs} attendance log(s), and deep biometrics synced."
-        )
+        if restore_type == "biometrics":
+            return (
+                True,
+                f"Enrolled students and face images successfully restored ({manifest.get('total_students', 0)} students, {manifest.get('total_enrolled_faces', 0)} face crops). System attendance logs and settings were preserved."
+            )
+        elif restore_type == "system":
+            return (
+                True,
+                f"System attendance logs and alerts successfully restored ({manifest.get('total_attendance_logs', 0)} logs, {manifest.get('total_security_alerts', 0)} alerts). Enrolled students and biometrics were preserved."
+            )
+        else:
+            return (
+                True,
+                f"Full system state successfully restored ({manifest.get('total_students', 0)} students, {manifest.get('total_attendance_logs', 0)} logs, {manifest.get('total_security_alerts', 0)} alerts)."
+            )
+
     except Exception as e:
         return (False, f"Restore failed during extraction: {str(e)}")
 
 
 def list_backups() -> list:
     """
-    Returns a sorted list of available local backup archives in the backups/ directory.
+    Returns a sorted list of available local backup archives categorized by type.
     """
     if not os.path.exists(BACKUPS_DIR):
         return []
@@ -306,14 +491,37 @@ def list_backups() -> list:
         size_mb = round(stat.st_size / (1024 * 1024), 2)
         size_str = f"{size_mb} MB" if size_mb >= 0.1 else f"{round(stat.st_size / 1024, 1)} KB"
 
-        # Try to read manifest
         manifest = {}
+        backup_type = "full"
         try:
             with zipfile.ZipFile(full_p, "r") as zf:
-                if "backup_manifest.json" in zf.namelist():
+                namelist = [n.replace("\\", "/") for n in zf.namelist()]
+                if "backup_manifest.json" in namelist:
                     manifest = json.loads(zf.read("backup_manifest.json").decode("utf-8"))
+                    backup_type = manifest.get("backup_type") or "full"
+                else:
+                    if "database/students_data.json" in namelist and "database/system_data.json" not in namelist:
+                        backup_type = "biometrics"
+                    elif "database/system_data.json" in namelist and "database/students_data.json" not in namelist:
+                        backup_type = "system"
+                    else:
+                        backup_type = "full"
         except Exception:
             pass
+
+        # Friendly type labels and badges
+        if backup_type == "biometrics":
+            type_label = "Students & Biometrics"
+            badge_class = "badge-csucc"
+            type_icon = "👥"
+        elif backup_type == "system":
+            type_label = "System Logs & Alerts"
+            badge_class = "badge-primary"
+            type_icon = "📋"
+        else:
+            type_label = "Full System Archive"
+            badge_class = "badge-gold"
+            type_icon = "📦"
 
         backups.append({
             "filename": f,
@@ -321,9 +529,14 @@ def list_backups() -> list:
             "size": size_str,
             "created": created_time,
             "timestamp_sort": stat.st_mtime,
-            "is_safety": f.startswith("pre_restore_safety"),
-            "description": manifest.get("backup_description", "System Backup Archive"),
+            "is_safety": f.startswith("pre_restore_"),
+            "backup_type": backup_type,
+            "type_label": type_label,
+            "type_icon": type_icon,
+            "badge_class": badge_class,
+            "description": manifest.get("backup_description", f"{type_label} Backup"),
             "total_students": manifest.get("total_students", 0),
+            "total_enrolled_faces": manifest.get("total_enrolled_faces", 0),
             "total_attendance_logs": manifest.get("total_attendance_logs", 0),
             "total_security_alerts": manifest.get("total_security_alerts", 0),
             "has_embeddings": manifest.get("sface_embeddings_ready", False)
@@ -357,12 +570,14 @@ if __name__ == "__main__":
     print(f"System Title:   {manifest['system_title']}")
     print(f"Facility:       {manifest['facility']}")
     print(f"Patrons:        {manifest['total_students']}")
+    print(f"Enrolled Crops: {manifest['total_enrolled_faces']}")
     print(f"Attendance:     {manifest['total_attendance_logs']}")
     print(f"Alerts:         {manifest['total_security_alerts']}")
     print(f"Embeddings:     {'Active' if manifest['sface_embeddings_ready'] else 'None'}")
     print("-" * 70)
-    print("Creating test backup...")
-    path = create_system_backup()
-    print(f"[SUCCESS] Backup created at: {path}")
+    print("Testing separated backups...")
+    sys_path = create_system_backup(backup_type="system", description="Test System Logs Backup")
+    print(f"[SUCCESS] System backup: {sys_path}")
+    bio_path = create_system_backup(backup_type="biometrics", description="Test Biometrics Backup")
+    print(f"[SUCCESS] Biometrics backup: {bio_path}")
     print(f"Available backups: {len(list_backups())}")
-

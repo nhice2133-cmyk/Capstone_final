@@ -19,11 +19,12 @@ import base64
 import numpy as np
 from datetime import datetime, timedelta
 from flask import (Blueprint, render_template, request, jsonify,
-                   redirect, url_for, flash, Response)
+                   redirect, url_for, flash, Response, abort)
 from flask_login import login_required
 from database import database as db
 from recognition.face_detection import FaceDetector
 from recognition.face_recognition import FaceRecognizer
+from recognition.image_crypto import save_encrypted_image, decrypt_image_bytes
 from config import Config, BASE_DIR
 
 kiosk_bp = Blueprint("kiosk", __name__)
@@ -88,7 +89,7 @@ def _generate_stream(camera_index: int):
         faces, gray = detector.detect(frame)
         color = (0, 200, 100)
         for face in faces:
-            face_roi = detector.crop_face(gray, face)
+            face_roi = detector.crop_face(frame, face, apply_preprocessing=False)
             label, score, student_info = recognizer.predict(face_roi)
             if student_info:
                 name = student_info["full_name"]
@@ -194,6 +195,22 @@ def recognize():
             return jsonify({"status": "cooldown", "face_box": face_box})
 
         _last_recognized_time[(student_db_id, camera_label)] = now
+
+        # Check if student has already logged attendance for today
+        today_log = db.get_today_attendance_log(student_db_id)
+        if today_log:
+            return jsonify({
+                "status": "already_logged",
+                "student_db_id": student_db_id,
+                "full_name": student_info["full_name"],
+                "student_id": student_info["student_id"],
+                "program": student_info["program"],
+                "time_in": today_log["time_in"],
+                "visit_purpose": today_log["visit_purpose"],
+                "confidence": round(float(score), 2),
+                "model_type": recognizer.active_model,
+                "face_box": face_box,
+            })
         
         return jsonify({
             "status": "recognized",
@@ -225,11 +242,11 @@ def recognize():
     if is_new_person or last is None or (now - last).total_seconds() > 60:
         _last_alert_time[camera_label] = now
         _last_unknown_face[camera_label] = current_face_resized
-        # Save snapshot
-        snapshot_filename = f"alert_{now.strftime('%Y%m%d_%H%M%S')}_{camera_label}.jpg"
+        # Save encrypted snapshot
+        snapshot_filename = f"alert_{now.strftime('%Y%m%d_%H%M%S')}_{camera_label}.enc"
         os.makedirs(Config.ALERTS_SNAPSHOT_DIR, exist_ok=True)
         snapshot_path = os.path.join(Config.ALERTS_SNAPSHOT_DIR, snapshot_filename)
-        cv2.imwrite(snapshot_path, frame)
+        save_encrypted_image(snapshot_path, frame)
         db.log_alert(
             snapshot_path=f"snapshots/{snapshot_filename}",
             confidence_score=round(float(score), 2),
@@ -259,6 +276,16 @@ def log_entry():
     student = db.get_student_by_db_id(student_db_id)
     if not student or student["status"] != "active":
         return jsonify({"success": False, "message": "Unauthorized: Student is inactive or does not exist."}), 403
+
+    # Safety check: prevent duplicate logs for the same day
+    existing_today = db.get_today_attendance_log(student_db_id)
+    if existing_today:
+        return jsonify({
+            "success": True,
+            "already_logged": True,
+            "record_id": existing_today["id"],
+            "message": f"Attendance already logged today at {existing_today['time_in']}."
+        })
 
     record_id = db.log_time_in(student_db_id, visit_purpose, node="entry")
     return jsonify({"success": True, "record_id": record_id})
@@ -310,6 +337,124 @@ def resolved_alerts_page():
     return render_template("admin/alerts.html", alerts=alerts, active_tab="resolved")
 
 
+@kiosk_bp.route("/admin/alerts/api/data")
+@login_required
+def alerts_api_data():
+    """Returns real-time security alerts data for the dynamic admin dashboard table."""
+    tab = request.args.get("tab", "active")
+    resolved = 1 if tab == "resolved" else 0
+    limit = min(int(request.args.get("limit", 200)), 500)
+    
+    alerts_rows = db.get_alerts(resolved=resolved, limit=limit)
+    active_count = db.count_unresolved_alerts()
+    resolved_count = db.count_resolved_alerts()
+
+    alerts_list = []
+    for a in alerts_rows:
+        alerts_list.append({
+            "id": a["id"],
+            "detected_at": a["detected_at"],
+            "confidence_score": round(float(a["confidence_score"]), 1) if a["confidence_score"] is not None else None,
+            "resolved": bool(a["resolved"]),
+            "has_snapshot": bool(a["snapshot_path"]),
+            "snapshot_url": url_for("kiosk.view_alert_snapshot", alert_id=a["id"]),
+            "resolve_url": url_for("kiosk.resolve_alert", alert_id=a["id"]),
+            "delete_url": url_for("kiosk.delete_alert", alert_id=a["id"]),
+        })
+
+    return jsonify({
+        "success": True,
+        "tab": tab,
+        "active_count": active_count,
+        "resolved_count": resolved_count,
+        "alerts": alerts_list,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+
+@kiosk_bp.route("/admin/alerts/api/resolve/<int:alert_id>", methods=["POST"])
+@login_required
+def api_resolve_alert(alert_id):
+    """Mark an alert as resolved via AJAX in real-time."""
+    db.resolve_alert(alert_id)
+    return jsonify({
+        "success": True,
+        "alert_id": alert_id,
+        "active_count": db.count_unresolved_alerts(),
+        "resolved_count": db.count_resolved_alerts()
+    })
+
+
+_FALLBACK_ALERT_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+    '<rect width="100" height="100" fill="#142419" rx="8"/>'
+    '<circle cx="50" cy="40" r="18" fill="#1e3a2b" stroke="#e0a96d" stroke-width="2"/>'
+    '<circle cx="50" cy="38" r="8" fill="#e0a96d"/>'
+    '<path d="M26 80 C26 62, 74 62, 74 80 Z" fill="#e0a96d"/>'
+    '<text x="50" y="93" text-anchor="middle" fill="#9ca3af" font-size="9" font-family="sans-serif">Snapshot</text>'
+    '</svg>'
+)
+
+
+@kiosk_bp.route("/admin/alerts/snapshot/<int:alert_id>")
+@login_required
+def view_alert_snapshot(alert_id):
+    """Securely stream decrypted alert snapshot to authenticated administrators."""
+    alert = db.get_alert_by_id(alert_id)
+    if not alert or not alert["snapshot_path"]:
+        return Response(_FALLBACK_ALERT_SVG, mimetype="image/svg+xml")
+
+    raw_path = str(alert["snapshot_path"]).replace("\\", "/").strip()
+    norm_rel = raw_path.lstrip("/")
+    if norm_rel.startswith("static/"):
+        norm_rel = norm_rel[7:]
+
+    # Potential directories to inspect for the snapshot
+    search_dirs = [
+        Config.ALERTS_SNAPSHOT_DIR,
+        os.path.join(Config.BASE_DIR, "static", "snapshots"),
+        os.path.join(Config.BASE_DIR, "static", os.path.dirname(norm_rel)),
+        os.path.join(Config.BASE_DIR, "static"),
+        Config.BASE_DIR,
+    ]
+    filename = os.path.basename(norm_rel)
+    base_name, _ = os.path.splitext(filename)
+
+    full_path = None
+    # 1. Direct path check
+    for direct_cand in [raw_path, os.path.join(Config.BASE_DIR, raw_path), os.path.join(Config.BASE_DIR, "static", raw_path)]:
+        if os.path.exists(direct_cand) and os.path.isfile(direct_cand):
+            full_path = direct_cand
+            break
+
+    # 2. Search directory candidates
+    if not full_path:
+        for sdir in search_dirs:
+            for fname in [filename, base_name + ".enc", base_name + ".jpg", base_name + ".jpeg", base_name + ".png"]:
+                cand = os.path.join(sdir, fname)
+                if os.path.exists(cand) and os.path.isfile(cand):
+                    full_path = cand
+                    break
+            if full_path:
+                break
+
+    if not full_path or not os.path.exists(full_path):
+        return Response(_FALLBACK_ALERT_SVG, mimetype="image/svg+xml")
+
+    raw_bytes = decrypt_image_bytes(full_path)
+    if not raw_bytes:
+        return Response(_FALLBACK_ALERT_SVG, mimetype="image/svg+xml")
+
+    if raw_bytes.startswith(b"\x89PNG"):
+        mime = "image/png"
+    elif raw_bytes.startswith(b"RIFF"):
+        mime = "image/webp"
+    else:
+        mime = "image/jpeg"
+
+    return Response(raw_bytes, mimetype=mime, headers={"Cache-Control": "private, max-age=3600"})
+
+
 @kiosk_bp.route("/admin/alerts/resolve/<int:alert_id>", methods=["POST"])
 @login_required
 def resolve_alert(alert_id):
@@ -326,14 +471,24 @@ def resolve_all_alerts():
     return redirect(url_for("kiosk.alerts_page"))
 
 
+def _remove_snapshot_file(snapshot_rel_path):
+    if not snapshot_rel_path:
+        return
+    base, _ = os.path.splitext(os.path.join(BASE_DIR, "static", snapshot_rel_path))
+    for ext in [".enc", ".jpg", ".jpeg", ".png"]:
+        p = base + ext
+        if os.path.exists(p):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+
+
 @kiosk_bp.route("/admin/alerts/delete/<int:alert_id>", methods=["POST"])
 @login_required
 def delete_alert(alert_id):
     snapshot = db.delete_alert(alert_id)
-    if snapshot:
-        path = os.path.join(BASE_DIR, "static", snapshot)
-        if os.path.exists(path):
-            os.remove(path)
+    _remove_snapshot_file(snapshot)
     flash("Alert deleted.", "success")
     return redirect(url_for("kiosk.resolved_alerts_page"))
 
@@ -343,9 +498,7 @@ def delete_alert(alert_id):
 def delete_all_resolved_alerts():
     snapshots = db.delete_all_resolved_alerts()
     for snapshot in snapshots:
-        path = os.path.join(BASE_DIR, "static", snapshot)
-        if os.path.exists(path):
-            os.remove(path)
+        _remove_snapshot_file(snapshot)
     flash("All resolved alerts have been deleted.", "success")
     return redirect(url_for("kiosk.resolved_alerts_page"))
 

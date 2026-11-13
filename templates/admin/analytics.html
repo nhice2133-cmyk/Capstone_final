@@ -1,6 +1,6 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Analytics &amp; Trends — CSU Athenaeum SMART ENTRY{% endblock %}
-{% block page_title %}Athenaeum Analytics &amp; Trends{% endblock %}
+{% block page_title %}Analytics{% endblock %}
 
 {% block admin_content %}
 <!-- Compact Sticky Control Toolbar -->
@@ -43,7 +43,7 @@
     <div class="kpi-icon-badge green">📊</div>
     <div class="kpi-details">
       <div class="kpi-value-compact" id="summaryTotal">—</div>
-      <div class="kpi-label-compact">Total Visits (Period)</div>
+      <div class="kpi-label-compact">Total Visits</div>
     </div>
   </div>
   <div class="kpi-card-compact">
@@ -57,14 +57,14 @@
     <div class="kpi-icon-badge gold">🏆</div>
     <div class="kpi-details">
       <div class="kpi-value-compact" id="summaryTopDept" style="color: #fbbf24;">—</div>
-      <div class="kpi-label-compact" id="summaryTopDeptLabel">Highest Visiting Department</div>
+      <div class="kpi-label-compact" id="summaryTopDeptLabel">Top Department</div>
     </div>
   </div>
   <div class="kpi-card-compact">
     <div class="kpi-icon-badge purple">🏛️</div>
     <div class="kpi-details">
       <div class="kpi-value-compact" id="summaryTopDeptVisits">—</div>
-      <div class="kpi-label-compact" id="summaryTopDeptShare">Top Department Share</div>
+      <div class="kpi-label-compact" id="summaryTopDeptShare">Top Dept Share</div>
     </div>
   </div>
 </div>
@@ -75,7 +75,7 @@
   <div class="chart-card-compact">
     <div class="chart-header-compact">
       <div class="chart-title-compact">
-        <span>📅</span> Daily Attendance Trend
+        <span>📅</span> Daily Attendance
       </div>
       <span class="chart-badge-compact green" id="dailyTotalBadge">7-Day Trend</span>
     </div>
@@ -88,7 +88,7 @@
   <div class="chart-card-compact">
     <div class="chart-header-compact">
       <div class="chart-title-compact">
-        <span>🏛️</span> College &amp; Department Ranking
+        <span>🏛️</span> Visits by Department
       </div>
       <div id="highestDeptBadge" class="chart-badge-compact gold">
         🏆 Calculating…
@@ -103,7 +103,7 @@
   <div class="chart-card-compact">
     <div class="chart-header-compact">
       <div class="chart-title-compact">
-        <span>🕐</span> Hourly Traffic Distribution (Today)
+        <span>🕐</span> Hourly Traffic
       </div>
       <span class="chart-badge-compact gold" id="hourlyPeakBadge">Peak: Calculating…</span>
     </div>
@@ -116,7 +116,7 @@
   <div class="chart-card-compact">
     <div class="chart-header-compact">
       <div class="chart-title-compact">
-        <span>🎯</span> Visit Purpose Distribution
+        <span>🎯</span> Visits by Purpose
       </div>
       <span class="chart-badge-compact blue" id="purposeTotalBadge">All Categories</span>
     </div>

@@ -128,18 +128,23 @@ class FaceDetector:
     preprocess_face_lbph = preprocess_face
 
     @staticmethod
-    def crop_face(frame_or_gray, face_bbox, apply_preprocessing=False, target_size=(200, 200)):
+    def crop_face(frame_or_gray, face_bbox, apply_preprocessing=False, target_size=(200, 200), padding_pct=0.12):
         """
         Crop and optionally preprocess a face region for the recognizer.
         Supports both natural color BGR frames and grayscale images.
+        Includes proportionate margin padding to preserve facial landmarks (eyes, chin, temples)
+        for deep neural alignment (YuNet affine warping).
         """
-        x, y, w, h = face_bbox
-        # Ensure coordinates are within image boundaries
+        x, y, w, h = int(face_bbox[0]), int(face_bbox[1]), int(face_bbox[2]), int(face_bbox[3])
         h_img, w_img = frame_or_gray.shape[:2]
-        x1 = max(0, x)
-        y1 = max(0, y)
-        x2 = min(w_img, x + w)
-        y2 = min(h_img, y + h)
+
+        pad_x = int(w * padding_pct)
+        pad_y = int(h * padding_pct)
+
+        x1 = max(0, x - pad_x)
+        y1 = max(0, y - pad_y)
+        x2 = min(w_img, x + w + pad_x)
+        y2 = min(h_img, y + h + pad_y)
 
         face_roi = frame_or_gray[y1:y2, x1:x2]
         if face_roi.size == 0:

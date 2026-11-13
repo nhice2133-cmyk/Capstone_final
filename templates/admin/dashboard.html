@@ -1,6 +1,6 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Dashboard — CSUCC Athenaeum SMART ENTRY{% endblock %}
-{% block page_title %}Athenaeum Overview &amp; Control{% endblock %}
+{% block page_title %}Overview{% endblock %}
 
 {% block admin_content %}
 <!-- Facility Hero Strip -->
@@ -14,17 +14,17 @@
         style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out;" />
     </div>
     <div style="position: relative; z-index: 2;">
-      <span class="badge badge-csucc" style="margin-bottom: 8px;">CSUCC ATHENAEUM LEARNING COMMONS</span>
+      <span class="badge badge-csucc" style="margin-bottom: 8px;">CSUCC ATHENAEUM</span>
       <h2 style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: #fff; line-height: 1.2;">
-        Caraga State University Cabadbaran Campus
+        Athenaeum Library
       </h2>
       <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-        Real-time biometric attendance monitoring, face recognition kiosks, and security alert tracking.
+        Real-time biometric attendance and security surveillance.
       </p>
     </div>
     <div style="position: relative; z-index: 2; display: flex; gap: 10px;">
       <a href="{{ url_for('kiosk.kiosk_entry') }}" target="_blank" class="btn btn-primary btn-sm">
-        <span>🏛️</span> Launch Smart Entry Kiosk
+        <span>🏛️</span> Launch Kiosk
       </a>
     </div>
   </div>
@@ -42,19 +42,19 @@
     onclick="window.location.href='{{ url_for('attendance.attendance_page') }}'" style="cursor: pointer;">
     <div class="stat-icon">🏛️</div>
     <div class="stat-value" id="statInside">{{ stats.currently_inside }}</div>
-    <div class="stat-label">Currently in Athenaeum</div>
+    <div class="stat-label">Currently Inside</div>
   </div>
   <div class="stat-card red" id="cardAlerts" onclick="window.location.href='{{ url_for('kiosk.alerts_page') }}'"
     style="cursor: pointer;">
     <div class="stat-icon">🚨</div>
     <div class="stat-value" id="statAlerts">{{ stats.pending_alerts }}</div>
-    <div class="stat-label">Pending Security Alerts</div>
+    <div class="stat-label">Security Alerts</div>
   </div>
   <div class="stat-card purple" id="cardEnrolled"
     onclick="window.location.href='{{ url_for('students.list_students') }}'" style="cursor: pointer;">
     <div class="stat-icon">🎓</div>
     <div class="stat-value" id="statEnrolled">{{ stats.total_enrolled }}</div>
-    <div class="stat-label">Registered Members &amp; Guests</div>
+    <div class="stat-label">Total Enrolled</div>
   </div>
 </div>
 
@@ -62,20 +62,20 @@
 <div class="card mt-4">
   <div class="card-header">
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span>📋 Live Athenaeum Attendance Feed</span>
+      <span>📋 Recent Attendance</span>
       <span class="badge badge-info" style="font-size: 0.68rem;">REAL-TIME</span>
     </div>
-    <a href="{{ url_for('attendance.attendance_page') }}" class="btn btn-sm btn-ghost">View Complete Records →</a>
+    <a href="{{ url_for('attendance.attendance_page') }}" class="btn btn-sm btn-ghost">View All →</a>
   </div>
   <div class="card-body p-0">
     <table class="table">
       <thead>
         <tr>
-          <th>User / Visitor</th>
-          <th>Role / Program</th>
+          <th>Name</th>
+          <th>Program</th>
           <th>Date</th>
           <th>Time In</th>
-          <th>Visit Purpose</th>
+          <th>Purpose</th>
         </tr>
       </thead>
       <tbody id="recentLogsBody">
@@ -93,8 +93,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted" style="padding: 2rem;">No attendance records recorded yet
-            today.</td>
+          <td colspan="5" class="text-center text-muted" style="padding: 2rem;">No records today.</td>
         </tr>
         {% endfor %}
       </tbody>

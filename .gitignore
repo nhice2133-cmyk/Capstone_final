@@ -1,0 +1,46 @@
+# ── User Biometric Data & Personal Records ─────────────────────────────────
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+!database/.gitkeep
+
+face_data/*
+!face_data/.gitkeep
+face_data/staging/*
+!face_data/staging/.gitkeep
+
+static/snapshots/*
+!static/snapshots/.gitkeep
+
+recognition/models/sface_embeddings.npz
+recognition/models/label_map.json
+recognition/models/history/
+
+backups/*
+!backups/README.txt
+
+# ── PyInstaller / Build & Dist directories ─────────────────────────────────
+build/
+dist/
+**/build/
+**/dist/
+*.spec.tmp
+Cleaned_Project_Files/
+
+# ── Byte-compiled / cache files ───────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+**/*.pyc
+.pytest_cache/
+*.log
+
+# ── Large Archives & Binaries ─────────────────────────────────────────────
+*.rar
+*.zip
+*.bin
+
+# ── Test & temporary artifacts ────────────────────────────────────────────
+test_*.jpg
+test_*.png
+alerts_view_verified.png

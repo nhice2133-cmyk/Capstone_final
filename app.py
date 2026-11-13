@@ -128,6 +128,15 @@ if __name__ == "__main__":
     init_db()
     print("[OK] Database initialised.")
 
+    # ── Biometric & snapshot encryption at rest ──────────────────────────
+    try:
+        from recognition.image_crypto import encrypt_all_saved_images
+        crypto_res = encrypt_all_saved_images()
+        if crypto_res.get("total", 0) > 0:
+            print(f"[OK] Biometric encryption: Secured {crypto_res['total']} image(s) at rest.")
+    except Exception as e:
+        print(f"[WARN] Biometric encryption migration: {e}")
+
     app = create_app()
     _seed_default_admin(app)
 

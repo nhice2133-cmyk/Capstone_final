@@ -1,11 +1,11 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Registry — CSUCC Athenaeum SMART ENTRY{% endblock %}
-{% block page_title %}Athenaeum User &amp; Student Registry{% endblock %}
+{% block page_title %}Enrolled Users{% endblock %}
 
 {% block admin_content %}
 <div class="toolbar" style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
   <a href="{{ url_for('students.enroll_page') }}" class="btn btn-primary">
-    <span>➕</span> Enroll New User / Student
+    <span>➕</span> Enroll User
   </a>
   
   <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -13,19 +13,19 @@
       <option value="all">All Programs</option>
     </select>
     <select id="statusFilter" style="padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: rgba(6, 21, 13, 0.7); color: var(--text-primary); cursor: pointer;">
-      <option value="all">All Accounts</option>
-      <option value="active">Active Only</option>
-      <option value="inactive">Deactivated Only</option>
+      <option value="all">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
     </select>
-    <input type="text" id="searchStudents" placeholder="Search name or ID…" class="search-input" style="margin: 0;" />
+    <input type="text" id="searchStudents" placeholder="Search name or ID..." class="search-input" style="margin: 0;" />
   </div>
 </div>
 
 <div class="card mt-3">
   <div class="card-header">
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span>👥 Enrolled Athenaeum Users ({{ students | length }})</span>
-      <span class="badge badge-csucc">CSUCC CAMPUS</span>
+      <span>👥 Enrolled Users ({{ students | length }})</span>
+      <span class="badge badge-csucc">CSUCC</span>
     </div>
   </div>
 
@@ -33,8 +33,8 @@
     <table class="table" id="studentsTable">
       <thead>
         <tr>
-          <th>#</th><th>Full Name</th><th>Student / Guest ID</th>
-          <th>Role / Program</th><th>Enrolled At</th><th>Status</th><th>Actions</th>
+          <th>#</th><th>Name</th><th>ID Number</th>
+          <th>Program</th><th>Enrolled</th><th>Status</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -60,19 +60,19 @@
             <form method="POST" action="{{ url_for('students.toggle_student', student_db_id=s.id) }}"
                   style="display:inline;">
               <button type="submit" class="btn btn-sm {{ 'btn-warning' if s.status == 'active' else 'btn-success' }}">
-                {{ '⏸ Deactivate' if s.status == 'active' else '▶ Activate' }}
+                {{ 'Deactivate' if s.status == 'active' else 'Activate' }}
               </button>
             </form>
             <form method="POST" action="{{ url_for('students.delete_student', student_db_id=s.id) }}"
                   style="display:inline;"
-                  onsubmit="return confirm('Delete {{ s.full_name }}? This cannot be undone.');">
-              <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
+                  onsubmit="return csuccConfirmSubmit(this, event, 'Permanently delete {{ s.full_name }} and all biometric records? This cannot be undone.', 'Delete User', 'danger', 'Delete');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
             </form>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted">No students enrolled yet.</td>
+          <td colspan="7" class="text-center text-muted">No users enrolled yet.</td>
         </tr>
         {% endfor %}
       </tbody>
